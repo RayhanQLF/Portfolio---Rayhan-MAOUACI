@@ -1,191 +1,880 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Portfolio – Rayhan Maouaci</title>
-<meta name="description" content="Portfolio de Rayhan Maouaci, élève en Terminale Bac Pro CIEL, passionné par l'informatique, la cybersécurité, les réseaux et l'électronique.">
-<style>
-/* (Styles identiques, inchangés pour conserver le design) */
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio – Rayhan Maouaci</title>
+  <meta name="description" content="Portfolio de Rayhan Maouaci, élève en Terminale Bac Pro CIEL, passionné par l'informatique, les réseaux, la cybersécurité et l'électronique.">
+
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #020617;
+      --panel: rgba(15, 23, 42, 0.95);
+      --border: #1f2937;
+      --accent: #38bdf8;
+      --muted: #9ca3af;
+      --text: #e5e7eb;
+      --shadow: 0 18px 40px rgba(15, 23, 42, 0.8);
+    }
+
+    /* Thème clair */
+    body[data-theme="light"] {
+      color-scheme: light;
+      --bg: #f3f4f6;
+      --panel: #ffffff;
+      --border: #e5e7eb;
+      --accent: #0ea5e9;
+      --muted: #6b7280;
+      --text: #111827;
+      --shadow: 0 10px 25px rgba(15, 23, 42, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, sans-serif;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 20% 0%, rgba(56,189,248,0.12), transparent 55%),
+        radial-gradient(circle at 80% 100%, rgba(129,140,248,0.15), transparent 55%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(2,6,23,0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .logo {
+      font-weight: 800;
+      font-size: 1rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 1.1rem;
+      font-size: 0.9rem;
+    }
+
+    nav a {
+      opacity: .8;
+      transition: opacity .2s ease, color .2s ease;
+    }
+
+    nav a:hover {
+      opacity: 1;
+      color: var(--accent);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .pill-indicator {
+      padding: 0.2rem 0.7rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(15,23,42,0.95);
+      color: var(--muted);
+      font-size: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .btn-ghost,
+    .btn-primary {
+      border-radius: 999px;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: rgba(15,23,42,0.95);
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: background .2s ease, transform .1s ease, box-shadow .2s ease, color .2s ease, border-color .2s ease;
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #0ea5e9);
+      color: #020617;
+      border-color: var(--accent);
+      font-weight: 600;
+      box-shadow: 0 10px 28px rgba(56,189,248,0.35);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 2.5rem;
+    }
+
+    /* Animation apparition */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .reveal {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+      }
+    }
+
+    /* HERO */
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      gap: 1.8rem;
+      align-items: center;
+      padding-block: 2rem;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: 0.75rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.8rem;
+      background: rgba(15,23,42,0.9);
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .hero-title {
+      font-size: clamp(2.1rem, 3vw, 2.7rem);
+      font-weight: 800;
+      margin-bottom: 0.7rem;
+      line-height: 1.2;
+    }
+
+    .hero-title span {
+      color: var(--accent);
+    }
+
+    .hero-subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      max-width: 34rem;
+      margin-bottom: 1.3rem;
+    }
+
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.2rem;
+      font-size: 0.8rem;
+    }
+
+    .tag {
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(15,23,42,0.95);
+      color: var(--muted);
+    }
+
+    .hero-contact {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .hero-contact span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .hero-card {
+      border-radius: 1.3rem;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 1.6rem 1.4rem;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card h2 {
+      font-size: 1.05rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .hero-card p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 0.9rem;
+    }
+
+    .hero-card ul {
+      list-style: none;
+      font-size: 0.9rem;
+      color: var(--text);
+      display: grid;
+      gap: 0.4rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .hero-card li::before {
+      content: "• ";
+      color: var(--accent);
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.8rem;
+      margin-bottom: 0.7rem;
+    }
+
+    .kpi-card {
+      border-radius: 0.9rem;
+      border: 1px dashed var(--border);
+      background: rgba(15,23,42,0.9);
+      padding: 0.7rem 0.8rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .kpi-card strong {
+      display: block;
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    /* Sections génériques */
+
+    section {
+      margin-bottom: 2rem;
+    }
+
+    .section-title {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section-title span {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(56,189,248,0.18);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 1rem 1rem;
+      font-size: 0.9rem;
+      box-shadow: 0 10px 30px rgba(15,23,42,0.7);
+    }
+
+    .card h3 {
+      font-size: 0.98rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .muted {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    ul.list {
+      list-style: none;
+      display: grid;
+      gap: 0.4rem;
+      font-size: 0.9rem;
+    }
+
+    ul.list li::before {
+      content: "› ";
+      color: var(--accent);
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+    }
+
+    .pill {
+      padding: 0.15rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--muted);
+      background: rgba(15,23,42,0.95);
+    }
+
+    .highlight-box {
+      border-radius: 1rem;
+      border: 1px solid rgba(56,189,248,0.35);
+      background: linear-gradient(135deg, rgba(56,189,248,0.12), rgba(15,23,42,0.9));
+      padding: 1rem 1rem;
+      font-size: 0.9rem;
+      box-shadow: var(--shadow);
+    }
+
+    /* Timeline */
+
+    .timeline {
+      border-left: 1px solid var(--border);
+      padding-left: 1rem;
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .timeline-item {
+      position: relative;
+      padding-left: 0.5rem;
+    }
+
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -1.1rem;
+      top: 0.4rem;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(56,189,248,0.18);
+    }
+
+    .timeline-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .timeline-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.2rem;
+    }
+
+    /* Citations & vlog */
+
+    .quote-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 1rem;
+    }
+
+    .quote-card {
+      border-radius: 1rem;
+      border: 1px dashed var(--border);
+      background: rgba(15,23,42,0.95);
+      padding: 0.9rem 1rem;
+      font-size: 0.9rem;
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .quote-text {
+      font-style: italic;
+    }
+
+    .quote-author {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .vlog-box {
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 1rem 1rem;
+      font-size: 0.9rem;
+    }
+
+    /* Contact & réseaux */
+
+    .contact-box {
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(56,189,248,0.14), rgba(15,23,42,0.95));
+      padding: 1.2rem 1.1rem;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .contact-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem;
+      font-size: 0.9rem;
+    }
+
+    .social-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      font-size: 0.9rem;
+    }
+
+    .social-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(15,23,42,0.95);
+      font-size: 0.85rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      background: #020617;
+      padding: 1.2rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    /* Responsive */
+
+    @media (max-width: 900px) {
+      nav ul {
+        display: none;
+      }
+      .hero {
+        grid-template-columns: minmax(0,1fr);
+      }
+      .hero-card {
+        order: -1;
+      }
+    }
+
+    @media (max-width: 640px) {
+      main {
+        padding-inline: 1.1rem;
+      }
+      .grid-2 {
+        grid-template-columns: minmax(0,1fr);
+      }
+    }
+  </style>
 </head>
+
 <body data-theme="dark">
-<header>
-<div class="nav-container">
-<div class="logo">RAYHAN MAOUACI</div>
-<nav aria-label="Navigation principale">
-<ul>
-<li><a href="#profil">Profil</a></li>
-<li><a href="#competences">Compétences</a></li>
-<li><a href="#projets">Projets</a></li>
-<li><a href="#citations">Mindset</a></li>
-<li><a href="#contact">Contact</a></li>
-</ul>
-</nav>
-<div class="nav-actions">
-<span class="pill-indicator">🎯 Bac Pro CIEL – Terminale</span>
-<button id="theme-toggle" class="btn-ghost" type="button">🌙 Mode sombre</button>
-<a href="https://github.com/" class="btn-ghost" target="_blank" rel="noopener">GitHub</a>
-<a href="#contact" class="btn-primary">Me contacter</a>
-</div>
-</div>
-</header>
-<main>
-<!-- HERO -->
-<section class="hero reveal" id="profil">
-<div>
-<div class="hero-badge">Rayhan Maouaci – 18 ans</div>
-<div class="hero-meta">
-<span class="pill-indicator">💻 Bac Pro CIEL</span>
-<span class="pill-indicator">🔐 Cybersécurité & réseaux</span>
-<span class="pill-indicator">🎓 Objectif : BTS SIO SISR</span>
-</div>
-<h1 class="hero-title">
-Salut, moi c’est <span>Rayhan</span> 👋<br>
-futur technicien & développeur.
-</h1>
-<p class="hero-subtitle">
-Actuellement en Terminale Bac Pro CIEL (Cybersécurité, Informatique & Réseaux, Électronique) au Lycée Georges Cisson, je construis mon avenir entre sécurité, développement et projets concrets. Mon objectif : intégrer un <strong>BTS SIO SISR</strong>, puis un <strong>Bachelor Développement IA & Data Engineering</strong>, jusqu’au <strong>Mastère Expert en Intelligence Artificielle</strong> chez Ynov.
-</p>
-<div class="hero-tags">
-<div class="tag">Cybersécurité</div>
-<div class="tag">Systèmes & réseaux</div>
-<div class="tag">Développement web</div>
-<div class="tag">Électronique</div>
-<div class="tag">IA & Data</div>
-</div>
-<div class="hero-contact">
-<span>📍 Toulon</span>
-<span>📧 <a href="mailto:ray.maouaci@gmail.com">ray.maouaci@gmail.com</a></span>
-<span>📱 07 00 00 00 00</span>
-</div>
-</div>
-<aside class="hero-card">
-<h2>Ce que je fais actuellement</h2>
-<p>
-En Bac Pro CIEL, je travaille sur la cybersécurité, les réseaux, l’informatique et l’électronique. Entre les cours, les TP et les stages, j’apprends à passer de la théorie à la pratique.
-</p>
-<ul>
-<li>Configuration réseau & notions de sécurité</li>
-<li>Découverte du pentest et des bonnes pratiques</li>
-<li>Montage, diagnostic & réparation de matériel</li>
-<li>Premiers projets web & outils numériques</li>
-</ul>
-<div class="mini-grid">
-<div class="kpi-card"><strong>6</strong> Stages déjà réalisés</div>
-<div class="kpi-card"><strong>2023 → 2025</strong> Expériences terrain</div>
-<div class="kpi-card"><strong>BTS SIO → Bachelor → Mastère</strong></div>
-</div>
-</aside>
-</section>
+  <header>
+    <div class="nav-container">
+      <div class="logo">RAYHAN MAOUACI</div>
+      <nav aria-label="Navigation principale">
+        <ul>
+          <li><a href="#profil">Profil</a></li>
+          <li><a href="#competences">Compétences</a></li>
+          <li><a href="#projets">Projets</a></li>
+          <li><a href="#citations">Mindset</a></li>
+          <li><a href="#contact">Contact</a></li>
+        </ul>
+      </nav>
+      <div class="nav-actions">
+        <span class="pill-indicator">🎯 Bac Pro CIEL – Terminale</span>
+        <button id="theme-toggle" class="btn-ghost" type="button">🌙 Mode sombre</button>
+        <a href="https://github.com/" class="btn-ghost" target="_blank" rel="noopener">GitHub</a>
+        <a href="#contact" class="btn-primary">Me contacter</a>
+      </div>
+    </div>
+  </header>
 
-<!-- COMPETENCES -->
-<section id="competences" class="reveal">
-<h2 class="section-title"><span></span>Compétences</h2>
-<div class="grid-2">
-<div class="card">
-<h3>Techniques</h3>
-<p class="muted">Informatique, cybersécurité, réseaux & électronique</p>
-<ul class="list">
-<li>Notions de cybersécurité (risques, mots de passe, sauvegardes, mises à jour)</li>
-<li>Adressage IP, petits réseaux locaux, diagnostic simple</li>
-<li>Montage / démontage de PC, remplacement de composants</li>
-<li>Découverte de l’électronique & mesures (multimètre…)</li>
-<li>Bases en HTML / CSS et logique de programmation</li>
-</ul>
-<div class="pill-row">
-<span class="pill">Cybersécurité</span>
-<span class="pill">Réseaux</span>
-<span class="pill">Matériel</span>
-<span class="pill">Web (HTML / CSS)</span>
-</div>
-</div>
-<div class="card">
-<h3>Savoir-être</h3>
-<p class="muted">Ce que j’apporte dans une équipe</p>
-<ul class="list">
-<li>Sérieux, ponctuel, respect des consignes</li>
-<li>Envie d’apprendre et de progresser</li>
-<li>À l’aise pour échanger avec les clients et collègues</li>
-<li>Capacité à apprendre vite par la pratique</li>
-</ul>
-<div class="pill-row">
-<span class="pill">Motivé</span>
-<span class="pill">Curieux</span>
-<span class="pill">Esprit d’équipe</span>
-<span class="pill">Autonome</span>
-</div>
-</div>
-</div>
-</section>
+  <main>
 
-<!-- PROJETS -->
-<section id="projets" class="reveal">
-<h2 class="section-title"><span></span>Projets & expériences</h2>
-<div class="grid-2">
-<div class="card">
-<h3>Portfolio & identité numérique</h3>
-<p class="muted">Projet perso – 2025</p>
-<p>Création de ce portfolio pour présenter mon parcours et mes projets.</p>
-</div>
-<div class="card">
-<h3>Stage en développement web</h3>
-<p class="muted">2025 – Entreprise</p>
-<p>Découverte du développement web en conditions réelles.</p>
-</div>
-<div class="card">
-<h3>Réparation téléphones</h3>
-<p class="muted">Stage – 2024</p>
-<p>Diagnostic, changement d’écrans, batteries et contact client.</p>
-</div>
-<div class="card">
-<h3>Fibre optique & électricité</h3>
-<p class="muted">Stages – 2023 / 2024</p>
-<p>Raccordement fibre, sécurité sur chantier et installations électriques.</p>
-</div>
-</div>
-</section>
+    <!-- HERO -->
+    <section class="hero reveal" id="profil">
+      <div>
+        <div class="hero-badge">Rayhan Maouaci – 18 ans</div>
 
-<!-- CITATIONS -->
-<section id="citations" class="reveal">
-<h2 class="section-title"><span></span>Mindset, rappels & citations</h2>
-<div class="quote-grid">
-<div class="quote-card"><div class="quote-text">« Quand quelque chose est assez important, tu le fais même si les chances ne sont pas en ta faveur. »</div><div class="quote-author">– Elon Musk</div></div>
-<div class="quote-card"><div class="quote-text">« Rien ne se perd, rien ne se crée, tout se transforme. »</div><div class="quote-author">– Antoine Lavoisier</div></div>
-<div class="quote-card"><div class="quote-text">« Certes, avec la difficulté vient aussi la facilité. »</div><div class="quote-author">– Coran</div></div>
-<div class="quote-card"><div class="quote-text">« La persévérance est la clé de toute réussite. »</div><div class="quote-author">– Rappel</div></div>
-</div>
-</section>
+        <div class="hero-meta">
+          <span class="pill-indicator">💻 Bac Pro CIEL</span>
+          <span class="pill-indicator">🔐 Cybersécurité & réseaux</span>
+          <span class="pill-indicator">🎓 Objectif : BTS SIO</span>
+        </div>
 
-<!-- CONTACT -->
-<section id="contact" class="reveal">
-<h2 class="section-title"><span></span>Contact & réseaux sociaux</h2>
-<div class="grid-2">
-<div class="card">
-<h3>Me joindre</h3>
-<ul class="list">
-<li>📧 <strong>Email :</strong> <a href="mailto:ray.maouaci@gmail.com">ray.maouaci@gmail.com</a></li>
-<li>📍 <strong>Localisation :</strong> Toulon</li>
-</ul>
-</div>
-<div class="contact-box">
-<h3>Réseaux</h3>
-<p class="muted">Pour suivre mon parcours ou me contacter :</p>
-<div class="social-row">
-<a class="social-pill" href="https://www.instagram.com/rkzqlf" target="_blank">📸 Instagram <span>@rkzqlf</span></a>
-<a class="social-pill" href="https://www.snapchat.com/add/rkz_qlf" target="_blank">👻 Snapchat <span>rkz_qlf</span></a>
-<a class="social-pill" href="mailto:ray.maouaci@gmail.com">✉️ Email</a>
-</div>
-<div style="margin-top:0.8rem;">
-<a href="mailto:ray.maouaci@gmail.com" class="btn-primary">Envoyer un email</a>
-</div>
-</div>
-</div>
-</section>
-</main>
-<footer>© <span id="year"></span> – Portfolio de Rayhan Maouaci</footer>
-<script>
-document.getElementById("year").textContent = new Date().getFullYear();
-</script>
+        <h1 class="hero-title">
+          Salut, moi c’est <span>Rayhan</span> 👋<br>
+          futur technicien & développeur.
+        </h1>
+
+        <p class="hero-subtitle">
+          Actuellement en Terminale Bac Pro CIEL (Cybersécurité, Informatique & Réseaux, Électronique) au lycée Georges Cisson,
+          je construis mon avenir entre sécurité, développement et projets concrets.
+          Mon objectif : intégrer un <strong>BTS SIO</strong> pour aller plus loin dans l’IT.
+        </p>
+
+        <div class="hero-tags">
+          <div class="tag">Cybersécurité</div>
+          <div class="tag">Systèmes & réseaux</div>
+          <div class="tag">Développement web</div>
+          <div class="tag">Électronique</div>
+          <div class="tag">Fibre optique</div>
+        </div>
+
+        <div class="hero-contact">
+          <span>📍 Toulon</span>
+          <span>📧 <a href="mailto:ray.maouaci@gmail">ray.maouaci@gmail</a></span>
+        </div>
+      </div>
+
+      <aside class="hero-card">
+        <h2>Ce que je fais actuellement</h2>
+        <p>
+          En Bac Pro CIEL, je travaille sur la cybersécurité, les réseaux, l’informatique
+          et l’électronique. Entre les cours, les TP et les stages, j’apprends à passer
+          de la théorie à la pratique.
+        </p>
+        <ul>
+          <li>Configuration réseau & notions de sécurité</li>
+          <li>Découverte du pentest et des bonnes pratiques</li>
+          <li>Montage, diagnostic & réparation de matériel</li>
+          <li>Premiers projets web & outils numériques</li>
+        </ul>
+
+        <div class="mini-grid">
+          <div class="kpi-card">
+            <strong>6</strong>
+            Stages déjà réalisés
+          </div>
+          <div class="kpi-card">
+            <strong>2023 → 2025</strong>
+            Expériences terrain
+          </div>
+          <div class="kpi-card">
+            <strong>BTS SIO</strong>
+            Objectif après le Bac
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- COMPETENCES -->
+    <section id="competences" class="reveal">
+      <h2 class="section-title"><span></span>Compétences</h2>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Techniques</h3>
+          <p class="muted">Informatique, cybersécurité, réseaux & électronique</p>
+          <ul class="list">
+            <li>Notions de cybersécurité (risques, mots de passe, sauvegardes, mises à jour)</li>
+            <li>Adressage IP, petits réseaux locaux, diagnostic simple</li>
+            <li>Montage / démontage de PC, remplacement de composants</li>
+            <li>Découverte de l’électronique & mesures (multimètre…)</li>
+            <li>Bases en HTML / CSS et logique de programmation</li>
+          </ul>
+          <div class="pill-row">
+            <span class="pill">Cybersécurité</span>
+            <span class="pill">Réseaux</span>
+            <span class="pill">Matériel</span>
+            <span class="pill">Web (HTML / CSS)</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Savoir-être & mindset</h3>
+          <p class="muted">Ce que j’apporte dans une équipe</p>
+          <ul class="list">
+            <li>Sérieux, ponctuel, respect des consignes</li>
+            <li>Envie de progresser et de comprendre en profondeur</li>
+            <li>À l’aise pour parler avec les gens (clients, collègues)</li>
+            <li>Capacité à apprendre vite par la pratique</li>
+          </ul>
+          <div class="pill-row">
+            <span class="pill">Motivé</span>
+            <span class="pill">Curieux</span>
+            <span class="pill">Esprit d’équipe</span>
+            <span class="pill">Autonome</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROJETS -->
+    <section id="projets" class="reveal">
+      <h2 class="section-title"><span></span>Projets & expériences</h2>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Portfolio & identité numérique</h3>
+          <p class="muted">Projet perso – 2025</p>
+          <p>
+            Création de ce portfolio pour présenter mon parcours, mes compétences
+            et mes projets. Objectif : avoir une vitrine pro à montrer aux écoles
+            et aux entreprises (stage / alternance).
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>Stage en développement web</h3>
+          <p class="muted">2025 – Entreprise</p>
+          <p>
+            Découverte du développement web en conditions réelles :
+            participation à de petites tâches, observation de projets en cours,
+            compréhension du workflow d’un développeur.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>Réparation téléphones</h3>
+          <p class="muted">Stage – 2024</p>
+          <p>
+            Diagnostic, changement d’écrans et de batteries, tests après
+            intervention, contact avec la clientèle. Travail précis, minutieux,
+            avec un vrai impact pour les gens.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>Fibre optique & électricité</h3>
+          <p class="muted">Stages – 2023 / 2024</p>
+          <p>
+            Découverte du raccordement fibre, sécurité sur chantier,
+            petites installations électriques. Ces expériences m’ont appris
+            la rigueur, les bons gestes et le travail sur le terrain.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CITATIONS + MINDSET -->
+    <section id="citations" class="reveal">
+      <h2 class="section-title"><span></span>Mindset, rappels & citations</h2>
+
+      <div class="quote-grid">
+        <div class="quote-card">
+          <div class="quote-text">
+            « Quand quelque chose est assez important, tu le fais même si les chances ne sont pas en ta faveur. »
+          </div>
+          <div class="quote-author">– Elon Musk</div>
+        </div>
+
+        <div class="quote-card">
+          <div class="quote-text">
+            « Rien ne se perd, rien ne se crée, tout se transforme. »
+          </div>
+          <div class="quote-author">– Antoine Lavoisier</div>
+        </div>
+
+        <div class="quote-card">
+          <div class="quote-text">
+            « Certes, avec la difficulté vient aussi la facilité. »
+          </div>
+          <div class="quote-author">– Coran, sourate Ash-Sharh</div>
+        </div>
+
+        <div class="quote-card">
+          <div class="quote-text">
+            « Allah aime ceux qui persévèrent avec patience et sincérité dans leurs efforts. »
+          </div>
+          <div class="quote-author">– Rappel spirituel</div>
+        </div>
+      </div>
+
+      <div class="vlog-box" style="margin-top:1rem;">
+        <h3>Petit “vlog” écrit – où j’en suis</h3>
+        <p class="muted">Un résumé rapide de mon mood et de mon trajet.</p>
+        <p>
+          Aujourd’hui, je suis en Bac Pro CIEL, entre cybersécurité, réseaux, informatique et électronique.
+          Je teste, je me trompe, je corrige, j’apprends. Mon but, ce n’est pas juste d’avoir un diplôme :
+          c’est de construire une vraie compétence utile, qui peut servir dans une équipe, une entreprise,
+          ou même mes propres projets.
+        </p>
+        <p>
+          Demain, je me vois en <strong>BTS SIO</strong>, à aller plus loin dans le dev et l’admin systèmes / réseaux,
+          tout en gardant un œil sur la cybersécurité. Je veux avancer étape par étape, mais sans jamais perdre
+          ce mindset : <strong>rien n’est figé, tout peut évoluer si je travaille sérieusement</strong>.
+        </p>
+      </div>
+    </section>
+
+    <!-- EXPERIENCE (TIMELINE) -->
+    <section id="experience" class="reveal">
+      <h2 class="section-title"><span></span>Parcours & expériences</h2>
+
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-title">Terminale Bac Pro CIEL</div>
+          <div class="timeline-meta">Lycée Georges Cisson – 2024 / 2025</div>
+          <p>Spécialité Cybersécurité, Informatique, Réseaux & Électronique.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-title">Stages techniques variés</div>
+          <div class="timeline-meta">2023 → 2025</div>
+          <p>Développement web, réparation téléphones, fibre optique, électricité bâtiment, support informatique.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-title">Objectif : BTS SIO</div>
+          <div class="timeline-meta">Après le Bac</div>
+          <p>Poursuivre en informatique, renforcer le dev, les réseaux et la cybersécurité.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTACT & RÉSEAUX -->
+    <section id="contact" class="reveal">
+      <h2 class="section-title"><span></span>Contact & réseaux sociaux</h2>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Me joindre</h3>
+          <ul class="list">
+            <li>📧 <strong>Email :</strong> <a href="mailto:ray.maouaci@gmail">ray.maouaci@gmail</a></li>
+            <li>📍 <strong>Localisation :</strong> Toulon</li>
+          </ul>
+          <p class="muted" style="margin-top:0.4rem;">
+            N’hésitez pas à me contacter pour un stage, une alternance ou un projet.
+          </p>
+        </div>
+
+        <div class="contact-box">
+          <h3>Réseaux & lien GitHub</h3>
+          <p class="muted">Pour suivre mon parcours ou me parler rapidement :</p>
+
+          <div class="social-row">
+            <a class="social-pill" href="https://www.instagram.com/rkzqlf" target="_blank" rel="noopener">
+              📸 Instagram <span>@rkzqlf</span>
+            </a>
+            <a class="social-pill" href="https://www.snapchat.com/add/rkz_qlf" target="_blank" rel="noopener">
+              👻 Snapchat <span>rkz_qlf</span>
+            </a>
+            <a class="social-pill" href="https://github.com/" target="_blank" rel="noopener">
+              🐙 GitHub <span>@</span>
+            </a>
+            <a class="social-pill" href="mailto:ray.maouaci@gmail">
+              ✉️ Email <span>ray.maouaci@gmail</span>
+            </a>
+          </div>
+
+          <div style="margin-top:0.8rem;">
+            <a href="mailto:ray.maouaci@gmail" class="btn-primary">Envoyer un email</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    © <span id="year"></span> – Portfolio de Rayhan Maouaci
+  </footer>
+
+  <script>
+    // Année dynamique
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    // Thème clair / sombre
+    const body = document.body;
+    const toggleBtn = document.getElementById("theme-toggle");
+
+    function applyTheme(theme) {
+      body.setAttribute("data-theme", theme);
+      toggleBtn.textContent = theme === "dark" ? "🌙 Mode sombre" : "☀️ Mode clair";
+    }
+
+    const savedTheme = localStorage.getItem("theme") || "dark";
+    applyTheme(savedTheme);
+
+    toggleBtn.addEventListener("click", () => {
+      const current = body.getAttribute("data-theme");
+      const next = current === "dark" ? "light" : "dark";
+      applyTheme(next);
+      localStorage.setItem("theme", next);
+    });
+
+    // Animation au scroll
+    const revealElements = document.querySelectorAll('.reveal');
+
+    function handleScroll() {
+      const triggerBottom = window.innerHeight * 0.85;
+      revealElements.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < triggerBottom) {
+          el.classList.add('visible');
+        }
+      });
+    }
+
+    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('load', handleScroll);
+  </script>
 </body>
 </html>
