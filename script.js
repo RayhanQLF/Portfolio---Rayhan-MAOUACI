@@ -228,74 +228,103 @@ function handleHeaderShrink() {
   }
 }
 
-// Sélecteurs
+window.addEventListener("scroll", handleHeaderShrink);
+window.addEventListener("load", handleHeaderShrink);
+
+animate();
+
+// ===================================
+// RAYHAI — IA 100% COMPATIBLE GITHUB
+// ===================================
+
 const bubble = document.getElementById("rayhai-bubble");
-const windowAI = document.getElementById("rayhai-window");
+const panel = document.getElementById("rayhai-panel");
 const closeBtn = document.getElementById("rayhai-close");
-const sendBtn = document.getElementById("rayhai-send");
-const input = document.getElementById("rayhai-text");
-const chat = document.getElementById("rayhai-chat");
+const messages = document.getElementById("rayhai-messages");
+const input = document.getElementById("rayhai-input");
+const send = document.getElementById("rayhai-send");
 
-// Ouvrir l'IA
-bubble.addEventListener("click", () => {
-  windowAI.classList.remove("hidden");
-  bubble.style.opacity = "0";
-  bubble.style.pointerEvents = "none";
-});
+let openedOnce = false;
 
-// Fermer
-closeBtn.addEventListener("click", () => {
-  windowAI.classList.add("hidden");
-  bubble.style.opacity = "1";
-  bubble.style.pointerEvents = "all";
-});
+// BUBBLE CLICK
+bubble.onclick = () => {
+    panel.classList.toggle("open");
+    if (!openedOnce) {
+        setTimeout(() => {
+            rayhaiAnswer("Bonjour, je suis RayhAI. Pose-moi une question.");
+        }, 300);
+        openedOnce = true;
+    }
+};
 
-// Fonction d'envoi
-function sendMessage() {
-  const text = input.value.trim();
-  if (text === "") return;
+// CLOSE BTN
+closeBtn.onclick = () => panel.classList.remove("open");
 
-  // Message utilisateur
-  chat.innerHTML += `<div class="message user">${text}</div>`;
+send.onclick = handleUserMessage;
+input.addEventListener("keypress", e => e.key === "Enter" && handleUserMessage());
 
-  input.value = "";
-  chat.scrollTop = chat.scrollHeight;
+// SEND USER MESSAGE
+function handleUserMessage() {
+    const text = input.value.trim();
+    if (!text) return;
 
-  // Réponse IA
-  setTimeout(() => {
-    const answer = generateAI(text);
-    chat.innerHTML += `<div class="message bot">${answer}</div>`;
-    chat.scrollTop = chat.scrollHeight;
-  }, 400);
+    addMessage(text, "user");
+    input.value = "";
+
+    setTimeout(() => processAI(text.toLowerCase()), 300);
 }
 
-sendBtn.addEventListener("click", sendMessage);
-input.addEventListener("keypress", (e) => e.key === "Enter" && sendMessage());
+// ADD MESSAGE
+function addMessage(t, sender) {
+    const div = document.createElement("div");
+    div.className = "msg " + sender;
+    div.innerText = t;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
 
-// Mini IA personnalisée
-function generateAI(question) {
+// TYPING EFFECT
+function rayhaiAnswer(text) {
+    const typing = document.createElement("div");
+    typing.className = "msg";
+    typing.innerHTML = "<span class='typing-dots'><span>.</span><span>.</span><span>.</span></span>";
+    messages.appendChild(typing);
 
-  question = question.toLowerCase();
+    messages.scrollTop = messages.scrollHeight;
 
-  if (question.includes("age") || question.includes("âge")) {
-    return "Rayhan a 18 ans.";
-  }
+    setTimeout(() => {
+        typing.innerHTML = text;
+    }, 600);
+}
 
-  if (question.includes("ville") || question.includes("où tu vis")) {
-    return "Rayhan vit à Toulon, dans le Var.";
-  }
+// IA LOCALE
+function processAI(q) {
+    // Basique
+    if (q.includes("salut") || q.includes("bonjour"))
+        return rayhaiAnswer("Salut ! Que veux-tu savoir ?");
 
-  if (question.includes("études") || question.includes("scolaire")) {
-    return "Rayhan est en Bac Pro CIEL, Terminale.";
-  }
+    if (q.includes("ça va") || q.includes("va bien"))
+        return rayhaiAnswer("Je vais très bien. Prêt à t’aider.");
 
-  if (question.includes("centre") || question.includes("intérêt")) {
-    return "Il aime l'informatique, le réseau, la cybersécurité, la musculation et Valorant.";
-  }
+    // Infos personnelles
+    if (q.includes("âge") || q.includes("age") || q.includes("ans"))
+        return rayhaiAnswer("Rayhan a 18 ans.");
 
-  if (question.includes("valorant") || question.includes("jeu")) {
-    return "Rayhan est très bon sur Valorant, surtout avec un rôle flex/duelliste.";
-  }
+    if (q.includes("ville") || q.includes("toulon"))
+        return rayhaiAnswer("Rayhan habite à Toulon.");
 
-  return "Je n'ai pas cette information pour l'instant, mais je peux apprendre.";
+    if (q.includes("étude") || q.includes("ciel") || q.includes("bac"))
+        return rayhaiAnswer("Il est en Bac Pro CIEL, Terminale.");
+
+    if (q.includes("intérêt") || q.includes("passion"))
+        return rayhaiAnswer("Ses centres d’intérêt : informatique, cybersécurité, réseau, musculation.");
+
+    if (q.includes("jeu") || q.includes("valorant"))
+        return rayhaiAnswer("Son jeu préféré est Valorant.");
+
+    if (q.includes("niveau") || q.includes("skill"))
+        return rayhaiAnswer("Rayhan possède un très bon niveau sur ses jeux, notamment Valorant.");
+
+    // Fallback
+    return rayhaiAnswer("Je peux répondre uniquement à des questions concernant Rayhan.");
 }

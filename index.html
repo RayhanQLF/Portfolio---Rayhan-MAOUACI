@@ -26,27 +26,30 @@
 
 <canvas id="bg-particles"></canvas>
 
-<!-- RAYHAI - Bulle + Assistant -->
+<!-- RAYHAI — IA FLOATING ASSISTANT -->
 <div id="rayhai-bubble">
-  <span>AI</span>
+    <div class="inner-glow"></div>
+    <span class="rayhai-pulse"></span>
 </div>
 
-<div id="rayhai-window" class="hidden">
-  <div class="rayhai-header">
-    <h2>RayhAI</h2>
-    <p>Assistant — Infos publiques</p>
-    <button id="rayhai-close">×</button>
-  </div>
+<div id="rayhai-panel">
+    <div class="rayhai-header">
+        <div class="rayhai-avatar"></div>
+        <div class="rayhai-info">
+            <h3>RayhAI</h3>
+            <p>Assistant — Infos publiques</p>
+        </div>
+        <span id="rayhai-close">×</span>
+    </div>
 
-  <div id="rayhai-chat">
-    <div class="message bot">Salut, je suis RayhAI. Que veux-tu savoir ?</div>
-  </div>
+    <div id="rayhai-messages"></div>
 
-  <div class="rayhai-input">
-    <input type="text" id="rayhai-text" placeholder="Écris ta question...">
-    <button id="rayhai-send">Envoyer</button>
-  </div>
+    <div class="rayhai-input-zone">
+        <input id="rayhai-input" type="text" placeholder="Écris ta question..." />
+        <button id="rayhai-send">Envoyer</button>
+    </div>
 </div>
+
 
 <body data-theme="dark">
   <header>
@@ -351,5 +354,4 @@
   <script src="script.js"></script>
   
 </body>
-
 </html>
