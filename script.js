@@ -228,244 +228,74 @@ function handleHeaderShrink() {
   }
 }
 
-// script.js — RayhAI (version robuste & corrigée)
-// Attendre que le DOM soit prêt, protéger contre éléments manquants,
-// typing effect asynchrone, ripple safe, fallbacks et logs utiles.
+// Sélecteurs
+const bubble = document.getElementById("rayhai-bubble");
+const windowAI = document.getElementById("rayhai-window");
+const closeBtn = document.getElementById("rayhai-close");
+const sendBtn = document.getElementById("rayhai-send");
+const input = document.getElementById("rayhai-text");
+const chat = document.getElementById("rayhai-chat");
 
-document.addEventListener("DOMContentLoaded", () => {
-  // ----- Helpers -----
-  const log = (...args) => console.log("[RayhAI]", ...args);
-  const warn = (...args) => console.warn("[RayhAI]", ...args);
+// Ouvrir l'IA
+bubble.addEventListener("click", () => {
+  windowAI.classList.remove("hidden");
+  bubble.style.opacity = "0";
+  bubble.style.pointerEvents = "none";
+});
 
-  function safeGet(id) {
-    const el = document.getElementById(id);
-    if (!el) warn(`Element with id "${id}" not found in DOM.`);
-    return el;
+// Fermer
+closeBtn.addEventListener("click", () => {
+  windowAI.classList.add("hidden");
+  bubble.style.opacity = "1";
+  bubble.style.pointerEvents = "all";
+});
+
+// Fonction d'envoi
+function sendMessage() {
+  const text = input.value.trim();
+  if (text === "") return;
+
+  // Message utilisateur
+  chat.innerHTML += `<div class="message user">${text}</div>`;
+
+  input.value = "";
+  chat.scrollTop = chat.scrollHeight;
+
+  // Réponse IA
+  setTimeout(() => {
+    const answer = generateAI(text);
+    chat.innerHTML += `<div class="message bot">${answer}</div>`;
+    chat.scrollTop = chat.scrollHeight;
+  }, 400);
+}
+
+sendBtn.addEventListener("click", sendMessage);
+input.addEventListener("keypress", (e) => e.key === "Enter" && sendMessage());
+
+// Mini IA personnalisée
+function generateAI(question) {
+
+  question = question.toLowerCase();
+
+  if (question.includes("age") || question.includes("âge")) {
+    return "Rayhan a 18 ans.";
   }
 
-  const bubble = safeGet("rayhai-toggle") || safeGet("rayhai-bubble") || document.querySelector(".rayhai-floating-btn") || null;
-  const windowEl = safeGet("rayhai-window") || safeGet("rayhai-panel") || document.querySelector(".rayhai-window") || null;
-  const messagesBox = safeGet("rayhai-messages") || document.querySelector(".rayhai-messages") || null;
-  const input = safeGet("rayhai-input") || document.querySelector("#rayhai-input") || safeGet("rayhai-text") || null;
-  const sendBtn = safeGet("rayhai-send") || document.querySelector("#rayhai-send") || null;
-  const closeBtn = safeGet("rayhai-close") || safeGet("rayhai-collapse") || null;
-  const typingIndicator = safeGet("rayhai-typing") || null;
-
-  if (!bubble) {
-    warn("Bubble not found — creating a minimal bubble in the DOM.");
-    // Create minimal bubble if missing (so nothing crashes)
-    const b = document.createElement("button");
-    b.id = "rayhai-toggle";
-    b.className = "rayhai-floating-btn";
-    b.innerHTML = "💬";
-    document.body.appendChild(b);
-    // reassign
-    bubble = b;
+  if (question.includes("ville") || question.includes("où tu vis")) {
+    return "Rayhan vit à Toulon, dans le Var.";
   }
 
-  // If windowEl not found, create a simple panel so rest can work
-  if (!windowEl) {
-    warn("Panel not found — creating a minimal panel in the DOM.");
-    const panel = document.createElement("div");
-    panel.id = "rayhai-window";
-    panel.className = "rayhai-window";
-    panel.innerHTML = `
-      <div class="rayhai-header">
-        <h2>RayhAI</h2>
-        <p>Assistant — Infos publiques</p>
-        <button id="rayhai-close">×</button>
-      </div>
-      <div id="rayhai-messages" class="rayhai-messages"></div>
-      <div class="rayhai-input-zone">
-        <input id="rayhai-input" type="text" placeholder="Écris ta question..." />
-        <button id="rayhai-send">Envoyer</button>
-      </div>
-    `;
-    document.body.appendChild(panel);
-    // re-query
-    windowEl = panel;
-    messagesBox = panel.querySelector("#rayhai-messages");
-    input = panel.querySelector("#rayhai-input");
-    sendBtn = panel.querySelector("#rayhai-send");
-    closeBtn = panel.querySelector("#rayhai-close");
+  if (question.includes("études") || question.includes("scolaire")) {
+    return "Rayhan est en Bac Pro CIEL, Terminale.";
   }
 
-  // final sanity check
-  if (!messagesBox || !input || !sendBtn) {
-    warn("Certains éléments essentiels manquent encore : messagesBox / input / sendBtn. Le widget fonctionnera partiellement.");
+  if (question.includes("centre") || question.includes("intérêt")) {
+    return "Il aime l'informatique, le réseau, la cybersécurité, la musculation et Valorant.";
   }
 
-  // ----- UI helpers -----
-  function createRipple(el, clientX, clientY) {
-    try {
-      const rect = el.getBoundingClientRect();
-      const ripple = document.createElement("span");
-      ripple.className = "rayhai-ripple";
-      const size = Math.max(rect.width, rect.height) * 1.8;
-      ripple.style.width = ripple.style.height = size + "px";
-      ripple.style.left = (clientX - rect.left) + "px";
-      ripple.style.top = (clientY - rect.top) + "px";
-      el.appendChild(ripple);
-      setTimeout(() => ripple.remove(), 800);
-    } catch (e) {
-      // if something fails (e.g. el is null), don't break everything
-      warn("createRipple failed:", e);
-    }
+  if (question.includes("valorant") || question.includes("jeu")) {
+    return "Rayhan est très bon sur Valorant, surtout avec un rôle flex/duelliste.";
   }
 
-  // add message (user or ai). typing = true => animate typing (returns promise)
-  let currentTypingAbort = null;
-  function addMessage(text, sender = "ai", { typing = false } = {}) {
-    if (!messagesBox) return;
-    const wrapper = document.createElement("div");
-    wrapper.className = `rayhai-msg ${sender === "user" ? "user" : "ai"}`;
-    messagesBox.appendChild(wrapper);
-
-    // typing behavior: letter by letter
-    if (typing) {
-      // cancel previous typing if asked
-      if (currentTypingAbort && typeof currentTypingAbort.cancel === "function") {
-        currentTypingAbort.cancel();
-      }
-      let cancelled = false;
-      currentTypingAbort = { cancel: () => { cancelled = true; } };
-
-      return new Promise((resolve) => {
-        const speed = 18; // ms per char
-        let i = 0;
-        const interval = setInterval(() => {
-          if (cancelled) {
-            clearInterval(interval);
-            wrapper.textContent = text;
-            messagesBox.scrollTop = messagesBox.scrollHeight;
-            resolve();
-            return;
-          }
-          wrapper.textContent = text.slice(0, i);
-          i++;
-          messagesBox.scrollTop = messagesBox.scrollHeight;
-          if (i > text.length) {
-            clearInterval(interval);
-            resolve();
-          }
-        }, speed);
-      });
-    } else {
-      wrapper.textContent = text;
-      messagesBox.scrollTop = messagesBox.scrollHeight;
-      return Promise.resolve();
-    }
-  }
-
-  // quick helper to append user and ai reply
-  async function userSends(text) {
-    if (!input) return;
-    await addMessage(text, "user");
-    pushMem("user", text);
-    input.value = "";
-    // small delay, then AI reply
-    setTimeout(async () => {
-      const reply = generateReply(text);
-      pushMem("ai", reply);
-      await addMessage(reply, "ai", { typing: true });
-    }, 220);
-  }
-
-  // ----- small memory -----
-  const MEMORY = [];
-  function pushMem(who, text) { MEMORY.push({who, text, ts: Date.now()}); if (MEMORY.length > 50) MEMORY.shift(); }
-
-  // ----- NLU / response generator (robuste) -----
-  function norm(s = "") { return String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\w\s]/g," ").replace(/\s+/g," ").trim(); }
-
-  const PROFILE = {
-    name: "Rayhan",
-    age: "18 ans",
-    city: "Toulon",
-    studies: "Bac Pro CIEL - Terminale",
-    interests: ["Informatique","Cybersécurité","Réseau","Musculation"],
-    favouriteGames: ["Valorant"],
-    gamingLevel: "Très bon de manière générale",
-    defaultDescription: "Rayhan, 18 ans, étudiant en Terminale CIEL. Passionné par l'informatique, la cybersécurité et les réseaux."
-  };
-
-  function detectIntent(text) {
-    const s = norm(text);
-    if (!s) return { id: "empty" };
-    if (/\b(salut|bonjour|hey|yo)\b/.test(s)) return { id: "greeting" };
-    if (/\b(ca va|ça va|comment vas|tu vas)\b/.test(s)) return { id: "howareyou" };
-    if (/\b(qui est|qui es|c'est qui|présente)\b/.test(s)) return { id: "who" };
-    if (/\b(age|ans|quel age|quel âge)\b/.test(s)) return { id: "age" };
-    if (/\b(toulon|ville|habite|ou vit)\b/.test(s)) return { id: "location" };
-    if (/\b(bac|terminale|ciel|etude|formation)\b/.test(s)) return { id: "studies" };
-    if (/\b(competen|competence|skill|html|css|js|python|reseau|cyber)\b/.test(s)) return { id: "skills" };
-    if (/\b(projet|portfolio|bot|automation|script)\b/.test(s)) return { id: "projects" };
-    if (/\b(valorant|jeu|jeux|niveau|aim)\b/.test(s)) return { id: "games" };
-    return { id: "fallback" };
-  }
-
-  function generateReply(raw) {
-    const s = norm(raw);
-    if (!s) return "Pose-moi une question.";
-    // privacy check (example)
-    if (/\b(adresse|numero|telephone|iban|mdp|mot de passe|email privé)\b/.test(s)) return "Désolé, je ne peux pas divulguer cette information.";
-
-    const intent = detectIntent(s);
-    switch (intent.id) {
-      case "greeting": return `Salut ! ${PROFILE.defaultDescription.split(".")[0]}.`;
-      case "howareyou": return "Je vais bien, merci — prêt à t'aider.";
-      case "who": return PROFILE.defaultDescription;
-      case "age": return `Il a ${PROFILE.age}.`;
-      case "location": return `Il vit à ${PROFILE.city}.`;
-      case "studies": return PROFILE.studies;
-      case "skills": return `Compétences : ${PROFILE.interests.join(", ")}.`;
-      case "projects": return `Projets : portfolio perso, bots, scripts réseaux.`;
-      case "games": return `Jeux favoris : ${PROFILE.favouriteGames.join(", ")} — niveau : ${PROFILE.gamingLevel}.`;
-      default:
-        if (s.includes("rayhan")) return PROFILE.defaultDescription;
-        if (/\b(que fais|tu fais|travaille)\b/.test(s)) return "Rayhan réalise des projets web, automatise des tâches et travaille la cybersécurité.";
-        return "Je n'ai pas compris précisément — peux-tu reformuler ? (ex: 'âge', 'études', 'compétences')";
-    }
-  }
-
-  // ----- events binding (safe) -----
-  bubble.addEventListener("click", (ev) => {
-    try {
-      createRipple(bubble, ev.clientX, ev.clientY);
-      const opened = windowEl.classList.toggle("visible");
-      windowEl.setAttribute("aria-hidden", String(!opened));
-      if (opened && input) input.focus();
-      if (opened && messagesBox && messagesBox.children.length === 0) {
-        const welcome = "Bonjour — je suis RayhAI. Pose une question sur Rayhan (ex: 'Quel est son parcours ?').";
-        pushMem("ai", welcome);
-        addMessage(welcome, "ai", { typing: true });
-      }
-    } catch (e) {
-      warn("Erreur lors du click sur la bulle :", e);
-    }
-  });
-
-  if (closeBtn) closeBtn.addEventListener("click", () => { windowEl.classList.remove("visible"); windowEl.setAttribute("aria-hidden","true"); });
-
-  if (sendBtn) sendBtn.addEventListener("click", () => { if (input) userSends(input.value); });
-  if (input) input.addEventListener("keydown", (e) => { if (e.key === "Enter") userSends(input.value); });
-
-  // expose for debug
-  window.RayhAI = {
-    PROFILE,
-    MEMORY,
-    pushMem,
-    detectIntent,
-    generateReply,
-    addMessage,
-    userSends
-  };
-
-  log("RayhAI initialized (robust mode).");
-}); // end DOMContentLoaded
-
-
-window.addEventListener("scroll", handleHeaderShrink);
-window.addEventListener("load", handleHeaderShrink);
-
-animate();
+  return "Je n'ai pas cette information pour l'instant, mais je peux apprendre.";
+}
