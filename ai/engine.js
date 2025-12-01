@@ -1,203 +1,154 @@
-// ai/engine.js
-// Moteur : loadPersona(), generateReply(userText, options)
-// - fallback local (rapide)
-// - option d'appel OpenAI (via key directe ou proxy).
-//
-// Sécurité : mettre OPENAI_PROXY_URL pour production (recommandé).
-// Pour tests locaux, la clé peut être stockée en localStorage via RayhAI.setKey().
+/* ============================================================
+   RAYHAI Engine (hybrid)
+   - Local rules/responses (fast)
+   - Optional OpenAI fallback (setApiKey)
+============================================================ */
 
-const MEM_KEY = 'rayhai_mem_v1';
-const OPENAI_KEY_STORAGE = 'rayhai_openai_key_v1';
-// Si tu as un proxy (recommandé pour production), place son URL ici (ex: '/api/openai').
-const OPENAI_PROXY_URL = null; // <-- mettre la route de ton proxy si tu as un serveur
+(function () {
+  "use strict";
 
-let PERSONA = null;
-let MEMORIES = [];
+  // persona will be loaded from persona.json
+  let PERSONA = null;
 
-// utilitaires
-const tokenize = s => (s||'').toLowerCase().split(/\W+/).filter(Boolean);
-const jaccard = (a,b) => {
-  const A = new Set(a), B = new Set(b);
-  const inter = [...A].filter(x=>B.has(x)).length;
-  const uni = new Set([...A,...B]).size;
-  return uni === 0 ? 0 : inter / uni;
-};
-
-export async function loadPersona(path='ai/persona.json') {
-  try {
-    const r = await fetch(path, {cache:'no-store'});
-    if(!r.ok) throw new Error('persona fetch failed');
-    PERSONA = await r.json();
-  } catch(e) {
-    PERSONA = {
-      name: "Rayhan",
-      short: "Étudiant en Terminale Bac Pro CIEL, passionné par l'informatique.",
-      facts: ["18 ans","Toulon","Bac Pro CIEL"],
-      instructions: "Réponds professionnellement et concis."
-    };
-    console.warn('engine: persona fallback used', e);
-  }
-  // load memory
-  const m = localStorage.getItem(MEM_KEY);
-  MEMORIES = m ? JSON.parse(m) : [];
-  return PERSONA;
-}
-
-export function addMemory(text) {
-  if(!text) return;
-  MEMORIES.unshift({text, ts: Date.now()});
-  if(MEMORIES.length > 40) MEMORIES.length = 40;
-  localStorage.setItem(MEM_KEY, JSON.stringify(MEMORIES));
-}
-
-export function clearMemories() {
-  MEMORIES = [];
-  localStorage.removeItem(MEM_KEY);
-}
-
-export function setOpenAIKey(key) {
-  if(!key) { localStorage.removeItem(OPENAI_KEY_STORAGE); return; }
-  localStorage.setItem(OPENAI_KEY_STORAGE, key);
-}
-
-export function getOpenAIKey() {
-  return localStorage.getItem(OPENAI_KEY_STORAGE) || null;
-}
-
-// internal small local generator (fast heuristics)
-function localHeuristicsReply(q) {
-  const t = q.toLowerCase();
-  if(/^(qui|qui es-tu|présente|présente-toi)/i.test(t) || /parle de toi/i.test(t)) {
-    return `${PERSONA.short} ${PERSONA.facts.join(' · ')}.`;
-  }
-  if(/age|ans|âge/i.test(t)) {
-    const f = PERSONA.facts.find(x=>/\d{2}/.test(x));
-    return f ? `J'ai ${f.replace(/\D/g,'')} ans.` : `J'ai 18 ans.`;
-  }
-  if(/mail|email|contact|contacter|adresse/i.test(t)) {
-    return `Tu peux me contacter à ray.maouaci@gmail.com.`;
-  }
-  if(/projet|portfolio|site/i.test(t)) {
-    return `Mon portfolio contient mes projets personnels, stages et travaux pratiques. Dis-moi lequel tu veux détailler.`;
-  }
-  if(/compétences|cybersécurité|réseau|réseaux|skill/i.test(t)) {
-    return `Compétences : cybersécurité, réseaux, maintenance matériel, HTML/CSS de base. Je vise un BTS SIO.`;
-  }
-  if(/bonjour|salut|hello|hey/i.test(t)) {
-    return `Salut ! Comment puis-je t'aider ?`;
-  }
-  if(q.length < 4) return `Peux-tu préciser ta question ?`;
-
-  // memory-aware quick match
-  const qt = tokenize(q);
-  for(const m of MEMORIES) {
-    const score = jaccard(qt, tokenize(m.text));
-    if(score > 0.45) return `Je me souviens : ${m.text}`;
+  async function loadPersona() {
+    try {
+      const res = await fetch("./ai/persona.json", {cache: "no-store"});
+      if (!res.ok) throw new Error("persona.json non trouvé");
+      PERSONA = await res.json();
+      return PERSONA;
+    } catch (e) {
+      console.warn("RayhAI: impossible de charger persona.json", e);
+      PERSONA = null;
+      return null;
+    }
   }
 
-  return `${PERSONA.short} Si tu veux plus de détails sur un point précis, demande-moi.`;
-}
-
-// OpenAI wrapper: tries proxy if configured; otherwise direct call (dangerous in production)
-async function callOpenAIDirect(prompt) {
-  const key = getOpenAIKey();
-  if(!key) throw new Error('NoOpenAIKey');
-
-  // Chat Completions
-  const body = {
-    model: "gpt-4o-mini", // ajustable selon disponibilité
-    messages: [
-      {role:'system', content: PERSONA.instructions || `Parle comme ${PERSONA.name}`},
-      {role:'user', content: prompt}
-    ],
-    max_tokens: 600,
-    temperature: 0.25
+  // expose persona getter
+  window.RayhaiPersona = {
+    get: async () => {
+      if (!PERSONA) await loadPersona();
+      return PERSONA;
+    }
   };
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method:'POST',
-    headers: {
-      "Content-Type":"application/json",
-      "Authorization": `Bearer ${key}`
-    },
-    body: JSON.stringify(body)
-  });
-  if(!res.ok) {
-    const txt = await res.text().catch(()=>null);
-    throw new Error('OpenAI error: ' + (txt || res.status));
-  }
-  const json = await res.json();
-  return (json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content) || null;
-}
+  // Local responder - deterministic templates, fast
+  function localResponder(text) {
+    if (!PERSONA) return "Je charge les informations…";
+    const t = String(text || "").toLowerCase();
 
-async function callOpenAIProxy(prompt) {
-  // Expect the proxy to accept POST {prompt} and return {text}
-  const res = await fetch(OPENAI_PROXY_URL, {
-    method: 'POST',
-    headers: { "Content-Type":"application/json" },
-    body: JSON.stringify({ prompt })
-  });
-  if(!res.ok) {
-    const txt = await res.text().catch(()=>null);
-    throw new Error('Proxy error: ' + (txt || res.status));
-  }
-  const json = await res.json();
-  return json.text || null;
-}
-
-/**
- * generateReply(userText, options)
- * options = { useOpenAIIfAvailable: boolean, preferProxy: boolean }
- */
-export async function generateReply(userText, options = {}) {
-  const text = (userText||'').trim();
-  if(!text) return "Je n'ai rien reçu — peux-tu préciser ta demande ?";
-
-  // 1) FAQ fuzzy match
-  if(PERSONA && PERSONA.faq && PERSONA.faq.length) {
-    const qt = tokenize(text);
-    let best=null,score=0;
-    for(const f of PERSONA.faq) {
-      const s = jaccard(qt, tokenize(f.q + ' ' + (f.a||'')));
-      if(s>score){score=s;best=f;}
+    if (/^(bonjour|salut|hello)/.test(t)) return `Salut — je suis RayhAI, assistant personnel de ${PERSONA.name}.`;
+    if (t.includes("qui es") || t.includes("présente")) {
+      return `${PERSONA.name}, ${PERSONA.age} ans — ${PERSONA.path}. Passions : ${PERSONA.passions.join(", ")}.`;
     }
-    if(score > 0.14) return best.a;
+    if (t.includes("âge") || t.includes("ans")) return `${PERSONA.name} a ${PERSONA.age} ans.`;
+    if (t.includes("compétence") || t.includes("skill") || t.includes("compétences")) {
+      const web = PERSONA.skills?.web?.join(", ") || "";
+      const tech = PERSONA.skills?.tech?.join(", ") || "";
+      return `Compétences principales : ${web}${tech ? " — " + tech : ""}.`;
+    }
+    if (t.includes("projet") || t.includes("portfolio")) {
+      return `Projets connus : ${PERSONA.projects.join(" • ")}. Dis lequel tu veux le détail ?`;
+    }
+    if (t.includes("langue")) return `Langues : ${PERSONA.languages.join(", ")}.`;
+    if (t.includes("objectif") || t.includes("bts") || t.includes("avenir")) return `Objectif : ${PERSONA.objectives.pro}.`;
+
+    // small fuzzy match on passions/skills for richer local reply
+    for (const key of ["passions", "skills"]) {
+      if (PERSONA[key]) {
+        const joined = Array.isArray(PERSONA[key]) ? PERSONA[key].join(" ").toLowerCase() : JSON.stringify(PERSONA[key]).toLowerCase();
+        if (t.split(" ").some(w => joined.includes(w))) {
+          return `Je peux te donner plus d'infos sur "${t}". Par exemple : ${joined.split(" ").slice(0,8).join(" ")}... Veux-tu un détail précis ?`;
+        }
+      }
+    }
+
+    // fallback local small help
+    return null; // indicate: no confident local answer
   }
 
-  // 2) local heuristics quick
-  const quick = localHeuristicsReply(text);
-  // If quick is generic fallback, continue; else return quick for short queries
-  const isGeneric = quick.includes('Si tu veux') || quick.includes('Si tu veux plus');
-  if(!isGeneric) {
-    // also add to memory
-    addMemory(text);
-    return quick;
+  // OpenAI fallback (async). Provide an external function to set key.
+  let _API_KEY = null;
+  function setApiKey(key, persist = false) {
+    _API_KEY = key ? String(key).trim() : null;
+    if (persist && _API_KEY) {
+      try { localStorage.setItem("RAYHAI_API_KEY", _API_KEY); } catch(e){/*ignore*/ }
+    }
+    return _API_KEY;
+  }
+  // load persisted key if any (opt-in)
+  try {
+    const saved = localStorage.getItem("RAYHAI_API_KEY");
+    if (saved) _API_KEY = saved;
+  } catch(e){}
+
+  async function openAIRequest(prompt) {
+    if (!_API_KEY) throw new Error("OpenAI API key not set");
+    // build system prompt with persona
+    const persona = PERSONA || {};
+    const system = `You are RayhAI, assistant for ${persona.name || "a user"}. Answer in French. Use persona facts if relevant. Be concise and professional.`;
+    const body = {
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.25,
+      max_tokens: 700
+    };
+
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type":"application/json",
+        "Authorization":"Bearer " + _API_KEY
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error("OpenAI error: " + resp.status + " " + txt);
+    }
+    const data = await resp.json();
+    const reply = data?.choices?.[0]?.message?.content;
+    return reply || null;
   }
 
-  // 3) If OpenAI requested and available, try remote
-  if(options.useOpenAIIfAvailable) {
+  // Public API: ask(text) -> returns reply string
+  async function ask(text) {
+    if (!PERSONA) await loadPersona();
+
+    // 1) try local responder
     try {
-      const preferProxy = !!options.preferProxy;
-      let out = null;
-      if(preferProxy && OPENAI_PROXY_URL) {
-        out = await callOpenAIProxy(text);
-      } else if(OPENAI_PROXY_URL) {
-        // prefer proxy if configured
-        try { out = await callOpenAIProxy(text); } catch(e) { /* continue to direct */ }
-      }
-      if(!out) {
-        out = await callOpenAIDirect(text);
-      }
-      if(out) {
-        addMemory(text);
-        return out.trim();
-      }
-    } catch(err) {
-      console.warn('engine: openai call failed, falling back to local', err);
+      const local = localResponder(text);
+      if (local) return local;
+    } catch(e){
+      console.warn("RayhAI local rule error", e);
     }
+
+    // 2) try OpenAI fallback if key present
+    if (_API_KEY) {
+      try {
+        const r = await openAIRequest(text);
+        if (r) return r;
+      } catch (e) {
+        console.warn("RayhAI OpenAI error", e);
+      }
+    }
+
+    // 3) fallback generic helpful response
+    return "Désolé, je n'ai pas de réponse complète pour ça en local. Reformule ou demande un autre sujet.";
   }
 
-  // 4) final fallback synthesis
-  addMemory(text);
-  return quick;
-}
+  // expose API
+  window.RayhaiEngine = {
+    ask,
+    setApiKey,
+    loadPersona,
+    _internal: { localResponder } // for debugging
+  };
+
+  // load persona on boot
+  loadPersona();
+
+})();

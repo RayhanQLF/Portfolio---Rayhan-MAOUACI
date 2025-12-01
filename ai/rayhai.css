@@ -1,73 +1,225 @@
-/* ai/rayhai.css — UI moderne, Apple-like */
-:root{
-  --bg: #020617;
-  --panel: rgba(15,23,42,0.95);
-  --muted: #9ca3af;
-  --accent: #38bdf8;
-  --glass: rgba(255,255,255,0.03);
-  --radius: 14px;
-  --shadow: 0 18px 40px rgba(0,0,0,0.6);
-  --text: #e5e7eb;
+/* ============================================================
+   RayhAI PRO — UI Premium
+   Style minimal Apple, responsive PC + Mobile
+============================================================ */
+
+#rayhai-root {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 999999;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
+  pointer-events: none;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-/* container fixed */
-#rayhai-container{ position: fixed; right: 26px; bottom: 26px; z-index: 99999; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-
-/* bubble */
-#rayhai-bubble{
-  width:64px; height:64px; border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-  background: linear-gradient(135deg, rgba(56,189,248,0.12), rgba(56,189,248,0.04));
-  border:1px solid rgba(56,189,248,0.12);
-  box-shadow: var(--shadow);
-  cursor:pointer; color:var(--text); font-size:26px;
+/* ------------------------------
+   BUBBLE
+------------------------------ */
+.rayhai-bubble {
+  pointer-events: auto;
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e6eef7;
+  cursor: pointer;
   backdrop-filter: blur(8px);
-  transition: transform .15s ease, box-shadow .15s ease;
+  box-shadow: 0 8px 22px rgba(2,6,23,0.4);
+  transition: transform 0.18s ease, opacity 0.18s ease;
 }
-#rayhai-bubble:hover{ transform: scale(1.06); box-shadow: 0 28px 60px rgba(56,189,248,0.08); }
-
-/* panel */
-#rayhai-panel{
-  width: 380px; height: 520px; border-radius: 16px;
-  background: linear-gradient(180deg, rgba(6,10,18,0.96), rgba(10,14,24,0.99));
-  border: 1px solid rgba(255,255,255,0.03);
-  box-shadow: 0 30px 80px rgba(2,8,23,0.8);
-  overflow: hidden; display: flex; flex-direction: column; transform-origin: bottom right;
-  opacity:0; pointer-events:none; transform: translateY(10px) scale(.98); transition: all .22s cubic-bezier(.2,.9,.2,1);
+.rayhai-bubble:hover {
+  transform: translateY(-4px);
 }
 
-/* active */
-#rayhai-panel.active{ opacity:1; pointer-events:auto; transform: translateY(0) scale(1); }
+/* ------------------------------
+   PANEL (Chatbox)
+------------------------------ */
+.rayhai-panel {
+  position: absolute;
+  bottom: 70px;
+  left: 0;
+  width: 360px;
+  height: 520px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 120px);
+  padding: 0;
+  background: rgba(10,12,18,0.94);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(2,6,23,0.55);
+  backdrop-filter: blur(10px);
+  transform: translateY(12px) scale(0.985);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(.2,.9,.3,1);
+  display: flex;
+  flex-direction: column;
+}
 
-/* header */
-.rayhai-header{ padding:14px 16px; display:flex; gap:12px; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.03); }
-.rayhai-avatar{ width:44px; height:44px; border-radius:10px; background:linear-gradient(135deg,var(--accent),#7dd3fc); display:flex; align-items:center; justify-content:center; color:#021; font-weight:700; }
-.rayhai-title{ font-weight:700; color:var(--text); font-size:16px; }
-.rayhai-sub{ font-size:12px; color:var(--muted); }
+/* Open state */
+.rayhai-panel.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
 
-/* messages */
-#rayhai-messages{ padding:14px; flex:1; overflow:auto; display:flex; flex-direction:column; gap:10px; background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent); }
-.msg{ max-width: 86%; padding:10px 12px; border-radius:10px; line-height:1.35; font-size:14px; word-break:break-word; }
-.msg.ai{ background: linear-gradient(180deg, rgba(56,189,248,0.08), rgba(56,189,248,0.03)); color:var(--text); align-self:flex-start; border:1px solid rgba(56,189,248,0.06); }
-.msg.user{ background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); color:var(--text); align-self:flex-end; border:1px solid rgba(255,255,255,0.03); }
+/* ------------------------------
+   HEADER
+------------------------------ */
+.rayhai-header {
+  padding: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+}
 
-/* suggestions */
-.rayhai-suggestions{ display:flex; gap:8px; padding:8px 14px; flex-wrap:wrap; border-top:1px solid rgba(255,255,255,0.02); }
-.chip{ background:var(--glass); border:1px solid rgba(255,255,255,0.03); padding:8px 12px; border-radius:999px; font-size:13px; color:var(--muted); cursor:pointer; transition:all .14s; }
-.chip:hover{ transform: translateY(-3px); color:var(--text); border-color:var(--accent); }
+.rayhai-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+}
 
-/* input */
-.rayhai-input{ display:flex; gap:8px; padding:12px; border-top:1px solid rgba(255,255,255,0.02); background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.01)); }
-#rayhai-text{ flex:1; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.03); background: rgba(0,0,0,0.25); color:var(--text); outline:none; font-size:14px; }
-.rayhai-actions{ display:flex; gap:8px; align-items:center; }
-.btn-ghost{ padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.03); background:transparent; color:var(--muted); cursor:pointer; }
-.btn-primary{ padding:8px 10px; border-radius:10px; border:none; background:linear-gradient(90deg,var(--accent),#7dd3fc); color:#021; cursor:pointer; }
+.rayhai-sub {
+  font-size: 12px;
+  color: rgba(230,238,247,0.7);
+  margin-top: 2px;
+}
 
-/* typing */
-.typing{ display:inline-block; width:38px; height:10px; background:linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)); border-radius:8px; opacity:.9; }
+/* ------------------------------
+   BODY (Messages)
+------------------------------ */
+.rayhai-body {
+  flex: 1;
+  padding: 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-behavior: smooth;
+}
 
-/* small responsive */
-@media (max-width:480px){
-  #rayhai-panel{ width: calc(100vw - 40px); right:20px; left:20px; bottom: 86px; height: 64vh; }
-  #rayhai-bubble{ right:20px; bottom:20px; }
+/* Scrollbars minimal */
+.rayhai-body::-webkit-scrollbar {
+  width: 6px;
+}
+.rayhai-body::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+}
+
+/* ------------------------------
+   MESSAGES
+------------------------------ */
+.rayhai-msg {
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
+}
+
+.rayhai-msg .bubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  line-height: 1.38;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.05);
+  color: #e6eef7;
+  font-size: 14px;
+}
+
+.rayhai-msg.user {
+  align-self: flex-end;
+}
+.rayhai-msg.user .bubble {
+  background: linear-gradient(90deg, #a6f0ff, #38bdf8);
+  color: #022029;
+  font-weight: 600;
+}
+
+/* timestamp */
+.rayhai-ts {
+  font-size: 11px;
+  opacity: 0.55;
+  margin-top: 3px;
+}
+
+/* Typing indicator */
+.rayhai-typing {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px;
+}
+.rayhai-typing .dot {
+  width: 7px;
+  height: 7px;
+  background: #e6eef7;
+  border-radius: 50%;
+  animation: typingAnim 0.9s infinite ease-in-out;
+  opacity: 0.5;
+}
+.rayhai-typing .dot:nth-child(2) { animation-delay: 0.15s; }
+.rayhai-typing .dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes typingAnim {
+  0% {transform: translateY(0); opacity: .4;}
+  50% {transform: translateY(-5px); opacity: 1;}
+  100% {transform: translateY(0); opacity: .4;}
+}
+
+/* ------------------------------
+   FOOTER (Input)
+------------------------------ */
+.rayhai-footer {
+  padding: 14px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.rayhai-footer textarea {
+  flex: 1;
+  min-height: 45px;
+  max-height: 120px;
+  resize: none;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #e6eef7;
+  font-size: 14px;
+  outline: none;
+}
+
+/* Button send */
+.rayhai-action-send {
+  background: linear-gradient(180deg, #60e1ff, #38bdf8);
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #022029;
+  font-weight: 700;
+  transition: opacity .15s ease;
+}
+.rayhai-action-send:hover {
+  opacity: .85;
+}
+
+/* ------------------------------
+   Mobile Adaptation
+------------------------------ */
+@media (max-width: 720px) {
+  .rayhai-panel {
+    width: calc(100vw - 40px);
+    height: 70vh;
+    bottom: 70px;
+    border-radius: 12px;
+  }
 }

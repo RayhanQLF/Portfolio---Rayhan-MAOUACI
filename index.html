@@ -3,9 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Portfolio – Rayhan Maouaci</title>
-  <meta name="description" content="Portfolio de Rayhan Maouaci, élève en Terminale Bac Pro CIEL.">
-  <link rel="stylesheet" href="style.css">
+  <title>Rayhan MAOUACI | Portfolio</title>
+
+  <link rel="icon" href="data:,">
+
+    <!-- CSS principal -->
+    <link rel="stylesheet" href="assets/css/main.css">
+
+    <!-- RayhAI – Styles -->
+    <link rel="stylesheet" href="ai/rayhai.css">
 </head>
 
 <body data-theme="dark">
@@ -26,7 +32,11 @@
   <!-- HEADER -->
   <header>
     <div class="nav-container">
+
+      <!-- LOGO -->
       <div class="logo">RAYHAN MAOUACI</div>
+
+      <!-- NAVIGATION DESKTOP -->
       <nav aria-label="Navigation principale">
         <ul>
           <li><a href="#profil">Profil</a></li>
@@ -36,13 +46,34 @@
           <li><a href="#contact">Contact</a></li>
         </ul>
       </nav>
+
+      <!-- ACTIONS DESKTOP -->
       <div class="nav-actions">
-        <button id="theme-toggle" class="btn-ghost" type="button">🌙 Mode sombre</button>
+        <button id="theme-toggle" class="btn-ghost" type="button">
+          🌙 Mode sombre
+        </button>
         <a href="https://github.com/RayhanProjectsX" class="btn-ghost" target="_blank" rel="noopener">GitHub</a>
         <a href="#contact" class="btn-primary">Me contacter</a>
       </div>
+
+      <!-- MENU BURGER (MOBILE) — placé dans nav-container, hors .nav-actions -->
+      <button class="burger" id="burger-btn" aria-label="Ouvrir le menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
     </div>
   </header>
+
+  <!-- MENU MOBILE SLIDE (hors du header pour éviter les problèmes) -->
+  <div id="mobile-menu" inert aria-hidden="true">
+    <a href="#profil">Profil</a>
+    <a href="#competences">Compétences</a>
+    <a href="#projets">Projets</a>
+    <a href="#citations">Mindset</a>
+    <a href="#contact">Contact</a>
+  </div>
 
   <main>
 
@@ -321,11 +352,15 @@
   <footer>
     © <span id="year"></span> – Portfolio de Rayhan Maouaci
   </footer>
+  
+<div id="rayhai-root">
+  <!-- no need to include inner structure; script will create it if missing -->
+</div>
 
-<link rel="stylesheet" href="ai/rayhai.css">
+<!-- scripts at end of body -->
+<script src="ai/engine.js"></script>
+<script src="ai/rayhai.js"></script>
 
-<script type="module" src="ai/rayhai.js"></script>
-  <script src="script.js"></script>
-
+<script src="assets/js/main.js"></script>
 </body>
 </html>
