@@ -1,38 +1,72 @@
-# Portfolio – Rayhan Maouaci  
-Développeur Web & Étudiant CIEL  
-Assistant IA intégré : **RayhAI Pro**
+# 🌐 Portfolio — Rayhan Maouaci  
+### Développeur Web • Étudiant CIEL • IA & Interfaces Modernes
+
+Ce portfolio présente mon parcours, mes compétences, mes projets, ainsi qu’un assistant intelligent intégré (RayhAI) conçu pour analyser la page, proposer des actions et interagir avec l’utilisateur en temps réel.
 
 ---
 
-## 🚀 Présentation
+## 🚀 Fonctionnalités principales
 
-Bienvenue sur mon portfolio personnel.  
-Ce site présente mon parcours, mes projets, mes compétences techniques ainsi que mes objectifs dans le domaine informatique (Développement Web, IA, Réseaux…).
+### **1. Portfolio Moderne & Premium**
+- Design responsive (desktop / mobile)
+- Animations fluides
+- Effets « Apple Glass / Vision Pro »
+- Navigation intuitive
+- Thème clair / sombre
 
-Ce portfolio inclut également **RayhAI Pro**, un assistant conversationnel entièrement intégré, capable de répondre à des questions à la fois :
+### **2. RayhAI — Assistant IA intégré**
+RayhAI est un assistant autonome intégré au site.  
+Il propose plusieurs fonctions :
 
-- sur mon parcours  
-- sur mes projets  
-- sur mes compétences  
-- sur mes objectifs  
-- ou des sujets techniques  
+#### **• UI intelligente**
+- Bulle flottante libre (drag & snap)
+- Ouverture / fermeture fluide
+- Compatibilité mobile et desktop
+- Masquage automatique si la navigation mobile est ouverte
 
-RayhAI fonctionne en **hybride** :  
-- réponses locales rapides basées sur un `persona.json`  
-- option OpenAI pour des réponses intelligentes avancées
+#### **• Analyses et suggestions**
+- Analyse du scroll (sections détectées)
+- Suggestions d’amélioration contextuelles
+- Popup de sélection de texte (résumer, expliquer, analyser)
+- Suggestions proactives en cas d'inactivité
+
+#### **• Mode offline**
+Fonctionne entièrement localement, sans serveur externe.
 
 ---
 
-## 🧠 RayhAI Pro – Fonctionnement
+## 🧩 Structure du projet
 
-RayhAI est un assistant minimaliste et premium, intégré en bas à gauche du site sous la forme d’une bulle.
+.
+├── index.html
+├── assets/
+│ ├── css/
+│ │ ├── main.css
+│ │ └── rayhai.css
+│ ├── js/
+│ │ └── main.js
+├── ai/
+│ ├── rayhai.js
+│ └── engine.js
+└── README.md
 
-### Caractéristiques :
-- UI premium, inspirée d'Apple (glassmorphism, transitions smooth)  
-- Interface responsive (mobile & desktop)  
-- Système de messages avec historique (localStorage)  
-- Typing indicator animé  
-- Chargement automatique du persona  
-- Bulle → ouvre/ferme le chat  
-- Ne sort jamais de l’écran (clamping automatique)  
-- Accessible (aria-live, aria-hidden, focus fixes)
+
+---
+
+## ⚙️ Technologies utilisées
+
+### **Frontend**
+- HTML5
+- CSS3 (Glassmorphism, animations premium)
+- JavaScript (ES6+)
+
+### **IA & UX**
+- Moteur IA local (engine.js)
+- Comportements autonomes (suggestions, scroll, selection)
+- RayhAI UI (panel + bubble)
+
+⭐ Remerciements
+
+Merci d’avoir visité mon portfolio.
+N’hésite pas à me contacter pour collaborer ou échanger !
+
