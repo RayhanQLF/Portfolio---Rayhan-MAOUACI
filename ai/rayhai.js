@@ -535,177 +535,213 @@
       proactiveIntervalMs: CONFIG.proactiveIntervalMs
     };
 
-    async function askEngine(prompt) {
-      function localResponder(q) {
+async function askEngine(prompt) {
+function localResponder(q) {
   if (!q) return null;
   q = q.toLowerCase().trim();
 
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const user = PERSONA?.identity?.user_profile || {};
+
   /* =============================
-     EMOTION & TONE DETECTION
+     1. EMOTIONS / SENTIMENTS
      ============================= */
   const tone = {
-    happy: /(super|génial|trop bien|content|heureux|parfait|cool|nice)/.test(q),
-    sad: /(triste|mal|déprimé|fatigué|déçu|pas bien|chagrin)/.test(q),
-    angry: /(énervé|agacé|furieux|rage|colère|fou de|jpp|cassé les)/.test(q),
-    confused: /(comprends pas|bloqué|j'arrive pas|c compliqué|c'est dur)/.test(q),
-    stressed: /(stress|angoisse|peur|inquiet|pression)/.test(q),
-    lonely: /(seul|personne|parle|besoin de parler)/.test(q)
+    happy: /(super|génial|trop bien|content|heureux|parfait|cool|nice|parfait)/.test(q),
+    sad: /(triste|mal|déprimé|fatigué|déçu|pas bien|down|chagrin)/.test(q),
+    angry: /(énervé|agacé|furieux|rage|colère|jpp|cassé|chiant)/.test(q),
+    confused: /(comprends pas|bloqué|j'arrive pas|c compliqué|perdu|je galère)/.test(q),
+    stressed: /(stress|angoisse|peur|inquiet|pression|overthink)/.test(q),
+    lonely: /(seul|personne|j’ai personne|besoin de parler|solitude)/.test(q)
   };
 
-  if (tone.happy) {
-    return "Tu as l’air en forme ! Ça fait plaisir à voir. Tu veux avancer sur quelque chose, découvrir une section, ou juste discuter ?";
-  }
+  if (tone.happy)
+    return pick([
+      "J’aime cette énergie ! On continue ensemble ?",
+      "Tu as une super vibe. Tu veux avancer sur un truc en particulier ?",
+      "Ça fait plaisir à voir. Besoin d’aide ou juste discuter ?"
+    ]);
 
-  if (tone.sad) {
-    return "Désolé que tu te sentes comme ça. Si tu veux, je peux t’écouter, te changer les idées, ou t’aider sur un point précis.";
-  }
+  if (tone.sad)
+    return pick([
+      "Je suis là. Tu veux m’expliquer ce qui te pèse ?",
+      "Je comprends… Parle-moi si tu veux, je t’écoute.",
+      "On avance doucement, à ton rythme. Qu’est-ce qui va pas ?"
+    ]);
 
-  if (tone.angry) {
-    return "Je sens de la frustration. Respire un coup, on avance ensemble. Dis-moi ce qui t’agace le plus, je vais t’aider pas à pas.";
-  }
+  if (tone.angry)
+    return pick([
+      "Ok, je sens de la frustration. On respire. Qu’est-ce qui t’a énervé ?",
+      "Je comprends. Dis-moi ce qui a déclenché ça.",
+      "On va décomposer le problème, tu n’es pas seul."
+    ]);
 
-  if (tone.confused) {
-    return "Pas d’inquiétude. On va simplifier tout ça ensemble. Explique-moi ce qui te bloque, ou ce que tu essaies d’accomplir.";
-  }
+  if (tone.confused)
+    return "Pas de panique, on va simplifier ça ensemble. Qu’est-ce qui bloque exactement ?";
 
-  if (tone.stressed) {
-    return "Je comprends, ce n’est jamais agréable. On peut décomposer les choses, une étape à la fois. Qu’est-ce qui te stresse le plus ?";
-  }
+  if (tone.stressed)
+    return "Je comprends. On va découper tout ça en petites étapes. Qu’est-ce qui te met la pression ?";
 
-  if (tone.lonely) {
-    return "Je suis là. Tu peux me parler si tu veux, ou me poser n’importe quelle question.";
-  }
+  if (tone.lonely)
+    return "Je suis là. Parle-moi si tu veux. Tu n’es pas seul, ok ?";
+
 
   /* =============================
-     CONVERSATION GÉNÉRALE
+     2. SALUTATIONS
      ============================= */
-  // salutations
-  if (/(salut|bonjour|bonsoir|hey|yo|hello)/.test(q)) {
-    return "Salut ! Je suis RayhAI. Tu veux de l’aide, une explication, une suggestion ou juste discuter ?";
+  if (/^(salut|bonjour|bonsoir|hey|yo|hello)/.test(q)) {
+    return `Salut ! Je suis RayhAI. Tu veux une explication, une suggestion, ou juste discuter ?`;
   }
 
-  // ça va ?
+
+  /* =============================
+     3. ÇA VA ?
+     ============================= */
   if (/ça va|ca va|comment tu vas|tu vas bien/.test(q)) {
-    return "Je vais très bien, merci ! Et toi ? Tu veux qu’on travaille sur un élément de la page, que je t’aide, ou tu veux juste discuter ?";
+    return pick([
+      "Je vais très bien, merci. Et toi ?",
+      "Toujours prête. Comment tu te sens de ton côté ?",
+      "Nickel. Tu veux avancer sur ton site ou juste discuter ?"
+    ]);
   }
 
-  // qui es-tu ?
-  if (/t'es qui|tu es qui|qui es tu|présente toi/.test(q)) {
-    return "Je suis RayhAI, une intelligence locale intégrée à ce site. Je t’aide, j’analyse ta navigation et j’interagis avec toi comme un vrai assistant personnel.";
-  }
-
-  // compliments
-  if (/merci/.test(q)) {
-    return "Toujours là pour toi. Tu veux continuer ?";
-  }
-  if (/incroyable|trop fort|bg|stylé|parfait/.test(q)) {
-    return "Merci ! J’essaie d’être à la hauteur, même sans connexion internet.";
-  }
 
   /* =============================
-     PETITES DISCUSSIONS HUMAINES
+     4. QUI ES-TU ?
      ============================= */
-  // météo
-  if (/météo|il fait beau|temps/.test(q)) {
-    return "Je n’ai pas d’accès internet, mais je peux te dire que peu importe la météo dehors, ici tout est clair, lumineux et optimisé.";
+  if (/t'es qui|tu es qui|qui es tu|qui es-tu|présente toi/.test(q)) {
+    return `Je suis RayhAI, l’assistante personnelle intégrée au site de ${user.prenom}. Je t’aide, j’explique, j’oriente et j’accompagne chaque interaction.`;
   }
 
-  // humour
-  if (/blague|rigole|mdr|ptdr/.test(q)) {
-    return "Ok, une petite blague : Pourquoi les développeurs n’aiment pas la nature ? Trop de bugs.";
-  }
-
-  // motivation
-  if (/motivation|motivé|découragé/.test(q)) {
-    return "Tu es plus capable que tu ne le crois. Une seule action maintenant vaut mieux que dix demain. On avance ensemble ?";
-  }
-
-  // conseils
-  if (/conseil|idée|aide moi/.test(q)) {
-    return "Donne-moi ton contexte, ton objectif, et je te donne un conseil concret et actionnable.";
-  }
-
-  // sport
-  if (/muscu|sport|entrainement|gym/.test(q)) {
-    return "Échauffement court, exécution propre, surcharge progressive. Si tu veux je peux te faire un mini-programme.";
-  }
-
-  // études / orientation
-  if (/école|études|orientation|bts|diplome/.test(q)) {
-    return "Tout dépend de ce que tu veux construire. Raconte-moi ton objectif et je te donne une direction logique.";
-  }
-
-  // tech / IA
-  if (/ia|intelligence|chatgpt|machine/.test(q)) {
-    return "L’IA, c’est surtout de la logique et des données. Je peux t’expliquer un concept, une architecture ou te faire un résumé simplifié.";
-  }
-
-  // web / code
-  if (/html|css|js|javascript|web|code/.test(q)) {
-    return "Tu veux une explication, un exemple, une correction ou une optimisation ? Donne-moi ton extrait et je fais un audit rapide.";
-  }
 
   /* =============================
-     INTERACTIONS PORTFOLIO
+     5. SUR RAYHAN (basé persona.json)
      ============================= */
-  if (/améliorer|propose|action|optimiser/.test(q)) {
-    return "Voici des suggestions :\n1) Clarifier le hero\n2) Ajouter un résumé impactant\n3) Réduire le bruit visuel\n4) Ajouter CTA clair\n5) Séparer les sections avec un vrai rythme\n6) Mettre preuves / projets visibles";
+  if (/rayhan/.test(q) && /qui|c'est|parle|présente/.test(q)) {
+    return `${user.prenom} a ${user.age} ans et étudie en Terminale CIEL. Passionné par l’informatique, la musculation, la technologie, l’IA et le web.`;
   }
 
-  // résumé
-  if (/résume|résumé|résumer/.test(q)) {
-    return "Envoie ton texte ou sélectionne-le, je fais un résumé structuré.";
+  if (/âge|age|ans/.test(q)) {
+    return `${user.prenom} a ${user.age} ans.`;
   }
 
-  // explication
-  if (/expliquer|expliques|c'est quoi|signifie/.test(q)) {
-    return "Envoie ce que tu veux que je t’explique. Je fais une version simple + une version avancée si tu veux.";
+  if (/études|ecole|parcours|ciel/.test(q)) {
+    return `${user.prenom} est en Terminale CIEL, un parcours orienté informatique, cybersécurité, systèmes et réseaux.`;
   }
+
 
   /* =============================
-     QUESTIONS GÉNÉRALES HUMAINES
+     6. PASSIONS / PERSONA
      ============================= */
-  // philo simple
-  if (/vie|sens|pourquoi/.test(q)) {
-    return "Bonne question. Ce qui compte, c’est ce que tu construis et ce que tu choisis de devenir. Tu veux développer quel aspect de ta vie ?";
+  if (/passion|aime|hobby/.test(q)) {
+    return `${user.prenom} aime : ${PERSONA.passions.join(", ")}.`;
   }
 
-  // relations
-  if (/amour|couple|relation|cœur|coeur/.test(q)) {
-    return "Les relations, c’est communication + respect + honnêteté. Tu veux un avis sur une situation ?";
-  }
-
-  // travail
-  if (/travail|job|boulot|cv/.test(q)) {
-    return "Si tu veux, je peux t’aider à structurer ton CV, ton pitch ou te préparer à un entretien.";
-  }
-
-  // motivation projet
-  if (/projet|idée|créer|lancer/.test(q)) {
-    return "Dis-moi ton idée, je t’aide à la structurer, la découper et la rendre réalisable étape par étape.";
-  }
 
   /* =============================
-     SI RIEN NE CORRESPOND
+     7. OBJECTIFS / AVENIR
      ============================= */
-  if (q.length <= 4) return "Compris. Tu veux préciser un peu ?";
+  if (/objectif|avenir|bts|objectif pro/.test(q)) {
+    return `${user.prenom} vise : ${PERSONA.objectives.pro}.`;
+  }
 
-  return "Je vois ce que tu veux dire. Reformule légèrement ou donne-moi un peu plus de contexte, et je vais te répondre comme il faut.";
+
+  /* =============================
+     8. COMPÉTENCES
+     ============================= */
+  if (/compétence|skills|niveau/.test(q)) {
+    const web = PERSONA.skills.web.join(", ");
+    const tech = PERSONA.skills.tech.join(", ");
+    return `Compétences de ${user.prenom} : Web — ${web}. Technologie — ${tech}.`;
+  }
+
+
+  /* =============================
+     9. PROJETS
+     ============================= */
+  if (/projet|portfolio|travaux/.test(q)) {
+    return `Projets de ${user.prenom} : ${PERSONA.projects.join(" • ")}. Tu veux un détail ?`;
+  }
+
+
+  /* =============================
+     10. LANGUES
+     ============================= */
+  if (/langue|parle/.test(q)) {
+    return `${user.prenom} parle : ${PERSONA.languages.join(", ")}.`;
+  }
+
+
+  /* =============================
+     11. PETITES DISCUSSIONS
+     ============================= */
+  if (/météo|temps/.test(q))
+    return "Je n’ai pas la météo, mais ici tout est toujours clair et fluide.";
+
+  if (/blague|rigole|mdr|ptdr/.test(q))
+    return pick([
+      "Pourquoi les développeurs n’aiment pas la nature ? Trop de bugs.",
+      "Le HTML demande : « pourquoi je suis triste ? » — Parce qu’il a trop de balises fermées.",
+      "Console.log : le seul ami fidèle du développeur."
+    ]);
+
+  if (/motivation|motivé|déprime/.test(q))
+    return "Tu es plus capable que tu ne le penses. Une petite action aujourd’hui vaut dix intentions demain.";
+
+  if (/conseil|aide moi|aide-moi/.test(q))
+    return "Explique-moi ta situation, je te donne un plan simple et efficace.";
+
+
+  /* =============================
+     12. TECH / DEV / IA
+     ============================= */
+  if (/html|css|js|javascript|web|dev|code|bug/.test(q))
+    return "Envoie ton code ou explique ton problème. Je te fais une version propre et optimisée.";
+
+  if (/ia|intelligence artificielle|chatgpt|neural|machine/.test(q))
+    return "Je peux t’expliquer un concept IA, un modèle ou une architecture si tu veux.";
+
+
+  /* =============================
+     13. RELATIONS / VIE
+     ============================= */
+  if (/amour|couple|relation|cœur|coeur/.test(q))
+    return "Les relations demandent communication, confiance et patience. Tu veux un avis sur une situation ?";
+
+  if (/travail|job|boulot|cv/.test(q))
+    return "Je peux structurer ton CV, ton pitch ou t’aider à préparer un entretien.";
+
+
+  /* =============================
+     14. FALLBACK INTELLIGENT
+     ============================= */
+  if (q.length <= 3)
+    return "Je t’écoute. Tu veux préciser un peu ?";
+
+  return "Je vois. Ajoute un peu de détails et je te réponds précisément.";
 }
 
-      if (cfg.offline || !window.RayhaiEngine || typeof window.RayhaiEngine.ask !== "function") {
-        const r = localResponder(prompt);
-        return r || ("Mode local : aucune réponse externe configurée.");
-      }
 
-      try {
-        const res = await window.RayhaiEngine.ask(prompt);
-        if (!res) return null;
-        return typeof res === "string" ? res : (res.text || res.result || JSON.stringify(res));
-      } catch (err) {
-        return localResponder(prompt) || null;
-      }
-    }
+  /* ==================================================
+     ENGINE ROUTING (offline-only by default)
+     ================================================== */
+  if (cfg.offline || !window.RayhaiEngine || typeof window.RayhaiEngine.ask !== "function") {
+    const res = localResponder(prompt);
+    return res || "Mode local : aucune réponse externe disponible.";  
+  }
+
+  /* ==================================================
+     ONLINE ENGINE (if connected)
+     ================================================== */
+  try {
+    const res = await window.RayhaiEngine.ask(prompt);
+    if (!res) return null;
+    return typeof res === "string" ? res : (res.text || res.result || JSON.stringify(res));
+  } catch (_) {
+    return localResponder(prompt) || null;
+  }
+}
+
 
     function extractContext() {
       const title = document.title || "";
