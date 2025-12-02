@@ -25,6 +25,54 @@
 };
 
 
+/* ============================
+   RayhAI — Clear cache & disable persistence (safe patch)
+   - Supprime les clés RayhAI existantes
+   - Empêche les futurs setItem pour les clés RayhAI
+   - Ne touche pas aux autres données localStorage
+============================ */
+(function disableRayhaiPersistence() {
+  try {
+    // clés connues utilisées par RayhAI
+    const keysToRemove = [
+      'RAYHAI_HISTORY_V1',
+      'RAYHAI_BUBBLE_POS_V1',
+      'rayhai_chat',
+      'RAYHAI_WELCOMED',
+      'RAYHAI_BUBBLE_POS',
+      'RAYHAI_HISTORY'
+    ];
+    keysToRemove.forEach(k => {
+      try { localStorage.removeItem(k); } catch (e) {}
+      try { sessionStorage.removeItem(k); } catch (e) {}
+    });
+
+    // empêchons les futurs enregistrements pour les clés RayhAI
+    const origSet = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = function(key, value) {
+      try {
+        if (typeof key === 'string' && /rayhai|RAYHAI|rayhai_chat|RAYHAI_/i.test(key)) {
+          // noop pour toutes les clés RayhAI
+          return;
+        }
+      } catch (e) {}
+      return origSet(key, value);
+    };
+
+    // idem pour sessionStorage (si utilisé)
+    const origSessionSet = sessionStorage.setItem ? sessionStorage.setItem.bind(sessionStorage) : null;
+    if (origSessionSet) {
+      sessionStorage.setItem = function(key, value) {
+        try {
+          if (typeof key === 'string' && /rayhai|RAYHAI|rayhai_chat|RAYHAI_/i.test(key)) return;
+        } catch (e) {}
+        return origSessionSet(key, value);
+      };
+    }
+  } catch (e) {
+    // silent
+  }
+})();
 
   /* ========================
      Configuration
@@ -489,19 +537,161 @@
 
     async function askEngine(prompt) {
       function localResponder(q) {
-        q = (q || "").toLowerCase();
-        if (!q) return null;
-        if (q.includes("propose") || q.includes("action")) {
-          return "1. Améliorer le titre\n2. Ajouter un résumé\n3. Mettre CTA clair\n4. Mettre preuves projets\n";
-        }
-        if (q.includes("résume") || q.includes("résumer") || q.includes("résumé")) {
-          return "Résumé (local) : phrase principale, points clés, CTA.";
-        }
-        if (q.length < 40) {
-          return "Suggestion : clarifie ce point ou ajoute un exemple.";
-        }
-        return null;
-      }
+  if (!q) return null;
+  q = q.toLowerCase().trim();
+
+  /* =============================
+     EMOTION & TONE DETECTION
+     ============================= */
+  const tone = {
+    happy: /(super|génial|trop bien|content|heureux|parfait|cool|nice)/.test(q),
+    sad: /(triste|mal|déprimé|fatigué|déçu|pas bien|chagrin)/.test(q),
+    angry: /(énervé|agacé|furieux|rage|colère|fou de|jpp|cassé les)/.test(q),
+    confused: /(comprends pas|bloqué|j'arrive pas|c compliqué|c'est dur)/.test(q),
+    stressed: /(stress|angoisse|peur|inquiet|pression)/.test(q),
+    lonely: /(seul|personne|parle|besoin de parler)/.test(q)
+  };
+
+  if (tone.happy) {
+    return "Tu as l’air en forme ! Ça fait plaisir à voir. Tu veux avancer sur quelque chose, découvrir une section, ou juste discuter ?";
+  }
+
+  if (tone.sad) {
+    return "Désolé que tu te sentes comme ça. Si tu veux, je peux t’écouter, te changer les idées, ou t’aider sur un point précis.";
+  }
+
+  if (tone.angry) {
+    return "Je sens de la frustration. Respire un coup, on avance ensemble. Dis-moi ce qui t’agace le plus, je vais t’aider pas à pas.";
+  }
+
+  if (tone.confused) {
+    return "Pas d’inquiétude. On va simplifier tout ça ensemble. Explique-moi ce qui te bloque, ou ce que tu essaies d’accomplir.";
+  }
+
+  if (tone.stressed) {
+    return "Je comprends, ce n’est jamais agréable. On peut décomposer les choses, une étape à la fois. Qu’est-ce qui te stresse le plus ?";
+  }
+
+  if (tone.lonely) {
+    return "Je suis là. Tu peux me parler si tu veux, ou me poser n’importe quelle question.";
+  }
+
+  /* =============================
+     CONVERSATION GÉNÉRALE
+     ============================= */
+  // salutations
+  if (/(salut|bonjour|bonsoir|hey|yo|hello)/.test(q)) {
+    return "Salut ! Je suis RayhAI. Tu veux de l’aide, une explication, une suggestion ou juste discuter ?";
+  }
+
+  // ça va ?
+  if (/ça va|ca va|comment tu vas|tu vas bien/.test(q)) {
+    return "Je vais très bien, merci ! Et toi ? Tu veux qu’on travaille sur un élément de la page, que je t’aide, ou tu veux juste discuter ?";
+  }
+
+  // qui es-tu ?
+  if (/t'es qui|tu es qui|qui es tu|présente toi/.test(q)) {
+    return "Je suis RayhAI, une intelligence locale intégrée à ce site. Je t’aide, j’analyse ta navigation et j’interagis avec toi comme un vrai assistant personnel.";
+  }
+
+  // compliments
+  if (/merci/.test(q)) {
+    return "Toujours là pour toi. Tu veux continuer ?";
+  }
+  if (/incroyable|trop fort|bg|stylé|parfait/.test(q)) {
+    return "Merci ! J’essaie d’être à la hauteur, même sans connexion internet.";
+  }
+
+  /* =============================
+     PETITES DISCUSSIONS HUMAINES
+     ============================= */
+  // météo
+  if (/météo|il fait beau|temps/.test(q)) {
+    return "Je n’ai pas d’accès internet, mais je peux te dire que peu importe la météo dehors, ici tout est clair, lumineux et optimisé.";
+  }
+
+  // humour
+  if (/blague|rigole|mdr|ptdr/.test(q)) {
+    return "Ok, une petite blague : Pourquoi les développeurs n’aiment pas la nature ? Trop de bugs.";
+  }
+
+  // motivation
+  if (/motivation|motivé|découragé/.test(q)) {
+    return "Tu es plus capable que tu ne le crois. Une seule action maintenant vaut mieux que dix demain. On avance ensemble ?";
+  }
+
+  // conseils
+  if (/conseil|idée|aide moi/.test(q)) {
+    return "Donne-moi ton contexte, ton objectif, et je te donne un conseil concret et actionnable.";
+  }
+
+  // sport
+  if (/muscu|sport|entrainement|gym/.test(q)) {
+    return "Échauffement court, exécution propre, surcharge progressive. Si tu veux je peux te faire un mini-programme.";
+  }
+
+  // études / orientation
+  if (/école|études|orientation|bts|diplome/.test(q)) {
+    return "Tout dépend de ce que tu veux construire. Raconte-moi ton objectif et je te donne une direction logique.";
+  }
+
+  // tech / IA
+  if (/ia|intelligence|chatgpt|machine/.test(q)) {
+    return "L’IA, c’est surtout de la logique et des données. Je peux t’expliquer un concept, une architecture ou te faire un résumé simplifié.";
+  }
+
+  // web / code
+  if (/html|css|js|javascript|web|code/.test(q)) {
+    return "Tu veux une explication, un exemple, une correction ou une optimisation ? Donne-moi ton extrait et je fais un audit rapide.";
+  }
+
+  /* =============================
+     INTERACTIONS PORTFOLIO
+     ============================= */
+  if (/améliorer|propose|action|optimiser/.test(q)) {
+    return "Voici des suggestions :\n1) Clarifier le hero\n2) Ajouter un résumé impactant\n3) Réduire le bruit visuel\n4) Ajouter CTA clair\n5) Séparer les sections avec un vrai rythme\n6) Mettre preuves / projets visibles";
+  }
+
+  // résumé
+  if (/résume|résumé|résumer/.test(q)) {
+    return "Envoie ton texte ou sélectionne-le, je fais un résumé structuré.";
+  }
+
+  // explication
+  if (/expliquer|expliques|c'est quoi|signifie/.test(q)) {
+    return "Envoie ce que tu veux que je t’explique. Je fais une version simple + une version avancée si tu veux.";
+  }
+
+  /* =============================
+     QUESTIONS GÉNÉRALES HUMAINES
+     ============================= */
+  // philo simple
+  if (/vie|sens|pourquoi/.test(q)) {
+    return "Bonne question. Ce qui compte, c’est ce que tu construis et ce que tu choisis de devenir. Tu veux développer quel aspect de ta vie ?";
+  }
+
+  // relations
+  if (/amour|couple|relation|cœur|coeur/.test(q)) {
+    return "Les relations, c’est communication + respect + honnêteté. Tu veux un avis sur une situation ?";
+  }
+
+  // travail
+  if (/travail|job|boulot|cv/.test(q)) {
+    return "Si tu veux, je peux t’aider à structurer ton CV, ton pitch ou te préparer à un entretien.";
+  }
+
+  // motivation projet
+  if (/projet|idée|créer|lancer/.test(q)) {
+    return "Dis-moi ton idée, je t’aide à la structurer, la découper et la rendre réalisable étape par étape.";
+  }
+
+  /* =============================
+     SI RIEN NE CORRESPOND
+     ============================= */
+  if (q.length <= 4) return "Compris. Tu veux préciser un peu ?";
+
+  return "Je vois ce que tu veux dire. Reformule légèrement ou donne-moi un peu plus de contexte, et je vais te répondre comme il faut.";
+}
 
       if (cfg.offline || !window.RayhaiEngine || typeof window.RayhaiEngine.ask !== "function") {
         const r = localResponder(prompt);
