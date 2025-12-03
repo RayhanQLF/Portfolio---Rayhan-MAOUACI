@@ -228,7 +228,10 @@ window.RayhaiPanel = {
 // Event listeners
 closeBtn?.addEventListener("click", () => {
   window.RayhaiPanel.close();
-  if (navigator.vibrate) navigator.vibrate(10);
+  if (navigator.vibrate && RayhaiPanel._userInteracted) {
+  navigator.vibrate(10);
+}
+
 });
 
 // Close on outside click (with delay to prevent immediate close)
@@ -310,7 +313,12 @@ return { panel, body, input, sendBtn, suggestionsBar };
       startTop = pos.top;
       bubble.style.transition = "none";
       
-      if (navigator.vibrate) navigator.vibrate(10);
+      if (navigator.vibrate && RayhaiPanel._userInteracted) {
+  navigator.vibrate(10);
+}
+
+RayhaiPanel._userInteracted = true;
+
     }
 
     function onDragMove(cx, cy) {
