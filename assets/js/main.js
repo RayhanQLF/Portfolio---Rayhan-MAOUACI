@@ -559,15 +559,6 @@ function init() {
   improveAccessibility();
   monitorPerformance();
   
-  // Announce page ready for screen readers
-  setTimeout(() => {
-    const announcement = document.createElement('div');
-    announcement.setAttribute('role', 'status');
-    announcement.setAttribute('aria-live', 'polite');
-    announcement.className = 'sr-only';
-    announcement.textContent = 'Page chargée';
-    document.body.appendChild(announcement);
-  }, 100);
 }
 
 // ============================================
