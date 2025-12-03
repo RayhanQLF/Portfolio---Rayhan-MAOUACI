@@ -1,6 +1,6 @@
 /* ============================================
    RAYHAN PORTFOLIO - MAIN SCRIPT
-   Version 2.0 Optimized - 2025
+   Apple Premium Version 2025
 ============================================ */
 
 'use strict';
@@ -10,11 +10,11 @@
 // ============================================
 
 const CONFIG = {
-  particleCount: 60,
-  scrollThreshold: 0.2,
-  headerScrollThreshold: 100,
-  particleDistance: 150,
-  animationDelay: 100
+  scrollThreshold: 0.15,
+  headerScrollThreshold: 20,
+  animationDelay: 50,
+  debounceDelay: 150,
+  throttleDelay: 100
 };
 
 // ============================================
@@ -44,7 +44,7 @@ const throttle = (func, limit) => {
 };
 
 // ============================================
-// THEME MANAGER
+// THEME MANAGER (Apple Style)
 // ============================================
 
 class ThemeManager {
@@ -52,8 +52,19 @@ class ThemeManager {
     this.body = document.body;
     this.toggleBtn = $('#theme-toggle');
     this.toggleBtnMobile = $('#theme-toggle-mobile');
-    this.currentTheme = localStorage.getItem('theme') || 'dark';
+    this.currentTheme = this.getStoredTheme() || this.getPreferredTheme();
     this.init();
+  }
+
+  getStoredTheme() {
+    return localStorage.getItem('theme');
+  }
+
+  getPreferredTheme() {
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      return 'light';
+    }
+    return 'dark';
   }
 
   init() {
@@ -66,11 +77,26 @@ class ThemeManager {
     if (this.toggleBtnMobile) {
       this.toggleBtnMobile.addEventListener('click', () => this.toggle());
     }
+
+    // Listen for system theme changes
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!this.getStoredTheme()) {
+          this.apply(e.matches ? 'dark' : 'light');
+        }
+      });
+    }
   }
 
   apply(theme) {
     this.body.setAttribute('data-theme', theme);
     this.currentTheme = theme;
+    
+    // Update meta theme-color for mobile browsers
+    const metaTheme = $('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', theme === 'dark' ? '#000000' : '#ffffff');
+    }
   }
 
   toggle() {
@@ -78,13 +104,17 @@ class ThemeManager {
     this.apply(newTheme);
     localStorage.setItem('theme', newTheme);
     
-    // Smooth transition
-    this.body.style.transition = 'background 0.3s ease, color 0.3s ease';
+    // Add smooth transition class
+    this.body.style.setProperty('transition', 'background 0.5s cubic-bezier(0.28, 0.11, 0.32, 1), color 0.5s cubic-bezier(0.28, 0.11, 0.32, 1)');
+    
+    setTimeout(() => {
+      this.body.style.removeProperty('transition');
+    }, 500);
   }
 }
 
 // ============================================
-// NAVIGATION
+// NAVIGATION (Apple Style)
 // ============================================
 
 class Navigation {
@@ -93,7 +123,7 @@ class Navigation {
     this.burger = $('#burger-btn');
     this.mobileMenu = $('#mobile-menu');
     this.mobileLinks = $$('.mobile-link');
-    this.navLinks = $$('.nav-link');
+    this.navLinks = $$('.apple-nav-link');
     this.isOpen = false;
     
     this.init();
@@ -102,7 +132,10 @@ class Navigation {
   init() {
     // Burger toggle
     if (this.burger && this.mobileMenu) {
-      this.burger.addEventListener('click', () => this.toggleMobile());
+      this.burger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleMobile();
+      });
       
       // Close on link click
       this.mobileLinks.forEach(link => {
@@ -132,8 +165,11 @@ class Navigation {
       link.addEventListener('click', (e) => this.smoothScroll(link, e));
     });
 
-    // Header scroll effect
-    window.addEventListener('scroll', throttle(() => this.handleScroll(), 100));
+    // Header scroll effect (Apple style)
+    window.addEventListener('scroll', throttle(() => this.handleScroll(), CONFIG.throttleDelay), { passive: true });
+    
+    // Initial check
+    this.handleScroll();
   }
 
   toggleMobile() {
@@ -146,39 +182,44 @@ class Navigation {
     }
   }
 
-  openMobile() {
-    this.burger.classList.add('active');
-    this.mobileMenu.classList.add('open');
-    this.mobileMenu.removeAttribute('inert');
-    this.mobileMenu.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
-    this.isOpen = true;
+openMobile() {
+  this.burger.classList.add('active');
+  this.burger.setAttribute('aria-expanded', 'true');
 
-    // Hide RayhAI bubble & panel when mobile menu opens
-const rayBubble = document.querySelector('.rayhai-bubble');
-const rayPanel = document.querySelector('.rayhai-panel');
+  this.mobileMenu.classList.add('open');
+  this.mobileMenu.removeAttribute('inert'); // ← ouverture propre
 
-if (rayBubble) rayBubble.classList.add('hide');
-if (rayPanel) rayPanel.classList.add('hide');
+  document.body.style.overflow = 'hidden';
+  this.isOpen = true;
 
+  // Temporarily hide RayhAI when mobile menu opens
+  const rayBubble = $('.rayhai-bubble');
+  const rayPanel = $('.rayhai-panel');
+  if (rayBubble) rayBubble.style.opacity = '0';
+  if (rayPanel && rayPanel.classList.contains('open')) {
+    window.RayhaiPanel?.close();
   }
+}
 
-  closeMobile() {
-    this.burger.classList.remove('active');
-    this.mobileMenu.classList.remove('open');
-    this.mobileMenu.setAttribute('inert', '');
-    this.mobileMenu.setAttribute('aria-hidden', 'true');
-    document.body.style.overflow = '';
-    this.isOpen = false;
+closeMobile() {
+  this.burger.classList.remove('active');
+  this.burger.setAttribute('aria-expanded', 'false');
 
-    // Show RayhAI bubble & panel when mobile menu closes
-const rayBubble = document.querySelector('.rayhai-bubble');
-const rayPanel = document.querySelector('.rayhai-panel');
+  this.mobileMenu.classList.remove('open');
+  this.mobileMenu.setAttribute('inert', ''); // ← évite l’erreur ARIA
 
-if (rayBubble) rayBubble.classList.remove('hide');
-if (rayPanel) rayPanel.classList.remove('hide');
+  document.body.style.overflow = '';
+  this.isOpen = false;
 
+  // Restore RayhAI visibility
+  const rayBubble = $('.rayhai-bubble');
+  if (rayBubble) {
+    setTimeout(() => {
+      rayBubble.style.opacity = '';
+    }, 300);
   }
+}
+
 
   smoothScroll(link, event) {
     const href = link.getAttribute('href');
@@ -189,27 +230,37 @@ if (rayPanel) rayPanel.classList.remove('hide');
     
     const target = $(href);
     if (target) {
-      const offset = 80;
-      const targetPosition = target.offsetTop - offset;
+      const headerHeight = this.header.offsetHeight;
+      const targetPosition = target.offsetTop - headerHeight - 20;
       
       window.scrollTo({
         top: targetPosition,
         behavior: 'smooth'
       });
+
+      // Update URL without triggering scroll
+      history.replaceState(null, null, href);
     }
   }
 
   handleScroll() {
-    if (window.scrollY > CONFIG.headerScrollThreshold) {
+    const scrolled = window.scrollY > CONFIG.headerScrollThreshold;
+    
+    if (scrolled) {
       this.header.classList.add('scrolled');
     } else {
       this.header.classList.remove('scrolled');
+    }
+    
+    // Close mobile menu on significant scroll
+    if (this.isOpen && window.scrollY > 100) {
+      this.closeMobile();
     }
   }
 }
 
 // ============================================
-// SCROLL ANIMATIONS
+// SCROLL ANIMATIONS (Intersection Observer)
 // ============================================
 
 class ScrollAnimations {
@@ -223,13 +274,19 @@ class ScrollAnimations {
     const options = {
       root: null,
       threshold: CONFIG.scrollThreshold,
-      rootMargin: '0px'
+      rootMargin: '0px 0px -50px 0px'
     };
 
     this.observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
+      entries.forEach((entry, index) => {
         if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
+          // Stagger animation for multiple elements
+          setTimeout(() => {
+            entry.target.classList.add('visible');
+          }, index * 50);
+          
+          // Unobserve after animation
+          this.observer.unobserve(entry.target);
         }
       });
     }, options);
@@ -247,13 +304,13 @@ class ScrollAnimations {
 }
 
 // ============================================
-// ACTIVE NAV LINK
+// ACTIVE NAV LINK (Apple Style)
 // ============================================
 
 class ActiveNavLink {
   constructor() {
     this.sections = $$('section[id]');
-    this.navLinks = $$('.nav-link');
+    this.navLinks = $$('.apple-nav-link, .mobile-link');
     
     if (this.sections.length && this.navLinks.length) {
       this.init();
@@ -261,18 +318,19 @@ class ActiveNavLink {
   }
 
   init() {
-    window.addEventListener('scroll', throttle(() => this.update(), 100));
+    window.addEventListener('scroll', throttle(() => this.update(), CONFIG.throttleDelay), { passive: true });
     this.update();
   }
 
   update() {
     let current = '';
+    const headerHeight = $('#header')?.offsetHeight || 0;
     
     this.sections.forEach(section => {
-      const sectionTop = section.offsetTop;
-      const sectionHeight = section.clientHeight;
+      const sectionTop = section.offsetTop - headerHeight - 100;
+      const sectionBottom = sectionTop + section.offsetHeight;
       
-      if (window.scrollY >= sectionTop - 200) {
+      if (window.scrollY >= sectionTop && window.scrollY < sectionBottom) {
         current = section.getAttribute('id');
       }
     });
@@ -287,129 +345,12 @@ class ActiveNavLink {
 }
 
 // ============================================
-// PARTICLE SYSTEM
-// ============================================
-
-class ParticleSystem {
-  constructor() {
-    this.canvas = $('#bg-particles');
-    if (!this.canvas) return;
-    
-    this.ctx = this.canvas.getContext('2d');
-    this.particles = [];
-    this.animationId = null;
-    this.dpr = window.devicePixelRatio || 1;
-    
-    this.init();
-  }
-
-  init() {
-    this.resize();
-    this.createParticles();
-    this.animate();
-    
-    window.addEventListener('resize', debounce(() => {
-      this.resize();
-      this.createParticles();
-    }, 250));
-  }
-
-  resize() {
-    this.canvas.width = window.innerWidth * this.dpr;
-    this.canvas.height = window.innerHeight * this.dpr;
-    this.canvas.style.width = `${window.innerWidth}px`;
-    this.canvas.style.height = `${window.innerHeight}px`;
-    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-  }
-
-  createParticles() {
-    this.particles = [];
-    const count = Math.min(CONFIG.particleCount, Math.floor(window.innerWidth * window.innerHeight / 15000));
-    
-    for (let i = 0; i < count; i++) {
-      this.particles.push(new Particle(window.innerWidth, window.innerHeight));
-    }
-  }
-
-  animate() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    
-    // Update and draw particles
-    this.particles.forEach(particle => {
-      particle.update(window.innerWidth, window.innerHeight);
-      particle.draw(this.ctx);
-    });
-    
-    // Draw connections
-    if (window.innerWidth > 768) {
-      this.drawConnections();
-    }
-    
-    this.animationId = requestAnimationFrame(() => this.animate());
-  }
-
-  drawConnections() {
-    for (let i = 0; i < this.particles.length; i++) {
-      for (let j = i + 1; j < this.particles.length; j++) {
-        const dx = this.particles[i].x - this.particles[j].x;
-        const dy = this.particles[i].y - this.particles[j].y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance < CONFIG.particleDistance) {
-          const opacity = (1 - distance / CONFIG.particleDistance) * 0.5;
-          this.ctx.beginPath();
-          this.ctx.strokeStyle = `rgba(56, 189, 248, ${opacity})`;
-          this.ctx.lineWidth = 0.8;
-          this.ctx.moveTo(this.particles[i].x, this.particles[i].y);
-          this.ctx.lineTo(this.particles[j].x, this.particles[j].y);
-          this.ctx.stroke();
-        }
-      }
-    }
-  }
-}
-
-class Particle {
-  constructor(width, height) {
-    this.reset(width, height, true);
-  }
-
-  reset(width, height, initial = false) {
-    this.x = Math.random() * width;
-    this.y = Math.random() * height;
-    
-    const speed = initial ? 0.3 : 0.5;
-    this.vx = (Math.random() - 0.5) * speed;
-    this.vy = (Math.random() - 0.5) * speed;
-    this.radius = 1 + Math.random() * 1.5;
-  }
-
-  update(width, height) {
-    this.x += this.vx;
-    this.y += this.vy;
-    
-    if (this.x < -10 || this.x > width + 10 || this.y < -10 || this.y > height + 10) {
-      this.reset(width, height);
-    }
-  }
-
-  draw(ctx) {
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.8)';
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = 'rgba(56, 189, 248, 0.8)';
-    ctx.fill();
-  }
-}
-
-// ============================================
-// CARD HOVER EFFECTS
+// CARD HOVER EFFECTS (3D Transform)
 // ============================================
 
 class CardHoverEffects {
   constructor() {
-    this.cards = $$('.skill-card, .project-card, .quote-card');
+    this.cards = $$('.skill-card, .project-card, .quote-card, .stat-card');
     this.init();
   }
 
@@ -422,16 +363,16 @@ class CardHoverEffects {
   }
 
   onEnter(card) {
-    card.style.transition = 'transform 0.1s ease';
+    card.style.transition = 'transform 0.1s cubic-bezier(0.28, 0.11, 0.32, 1)';
   }
 
   onLeave(card) {
-    card.style.transform = 'translateY(0) rotateX(0) rotateY(0)';
-    card.style.transition = 'transform 0.4s ease';
+    card.style.transform = '';
+    card.style.transition = 'transform 0.35s cubic-bezier(0.28, 0.11, 0.32, 1)';
   }
 
   onMove(card, e) {
-    if (window.innerWidth < 768) return;
+    if (window.innerWidth < 1024) return;
     
     const rect = card.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -440,13 +381,15 @@ class CardHoverEffects {
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
     
-    const rotateX = (y - centerY) / 20;
-    const rotateY = (centerX - x) / 20;
+    const rotateX = (y - centerY) / 30;
+    const rotateY = (centerX - x) / 30;
     
     card.style.transform = `
-      translateY(-10px) 
+      perspective(1000px)
+      translateY(-4px)
       rotateX(${rotateX}deg) 
       rotateY(${rotateY}deg)
+      scale3d(1.02, 1.02, 1.02)
     `;
   }
 }
@@ -473,15 +416,36 @@ class SmoothScroll {
         if (target) {
           e.preventDefault();
           
-          const offset = 80;
-          const targetPosition = target.offsetTop - offset;
+          const headerHeight = $('#header')?.offsetHeight || 0;
+          const targetPosition = target.offsetTop - headerHeight - 20;
           
           window.scrollTo({
             top: targetPosition,
             behavior: 'smooth'
           });
+
+          // Update URL
+          history.replaceState(null, null, href);
         }
       });
+    });
+  }
+}
+
+// ============================================
+// LOGO CLICK SCROLL TO TOP
+// ============================================
+
+function initLogoScroll() {
+  const logo = $('.apple-logo');
+  if (logo) {
+    logo.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+      history.replaceState(null, null, ' ');
     });
   }
 }
@@ -504,10 +468,74 @@ function setCurrentYear() {
 function initEntranceAnimation() {
   document.body.style.opacity = '0';
   
-  setTimeout(() => {
-    document.body.style.transition = 'opacity 0.6s ease';
+  requestAnimationFrame(() => {
+    document.body.style.transition = 'opacity 0.6s cubic-bezier(0.28, 0.11, 0.32, 1)';
     document.body.style.opacity = '1';
-  }, 100);
+  });
+}
+
+// ============================================
+// PERFORMANCE MONITORING
+// ============================================
+
+function monitorPerformance() {
+  if (!window.performance || !window.performance.timing) return;
+  
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      const perfData = window.performance.timing;
+      const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
+      console.log(`🚀 Portfolio Apple - Page loaded in: ${pageLoadTime}ms`);
+      
+      // Log paint metrics if available
+      if (window.performance.getEntriesByType) {
+        const paintMetrics = window.performance.getEntriesByType('paint');
+        paintMetrics.forEach(metric => {
+          console.log(`🎨 ${metric.name}: ${Math.round(metric.startTime)}ms`);
+        });
+      }
+    }, 0);
+  });
+}
+
+// ============================================
+// ACCESSIBILITY IMPROVEMENTS
+// ============================================
+
+function improveAccessibility() {
+  // Skip to main content link
+  const skipLink = document.createElement('a');
+  skipLink.href = '#profil';
+  skipLink.className = 'skip-link';
+  skipLink.textContent = 'Aller au contenu principal';
+  skipLink.style.cssText = `
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--accent);
+    color: white;
+    padding: 8px;
+    text-decoration: none;
+    z-index: 100000;
+  `;
+  skipLink.addEventListener('focus', () => {
+    skipLink.style.top = '0';
+  });
+  skipLink.addEventListener('blur', () => {
+    skipLink.style.top = '-40px';
+  });
+  document.body.insertBefore(skipLink, document.body.firstChild);
+
+  // Add focus visible styles for keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      document.body.classList.add('keyboard-nav');
+    }
+  });
+
+  document.addEventListener('mousedown', () => {
+    document.body.classList.remove('keyboard-nav');
+  });
 }
 
 // ============================================
@@ -515,26 +543,31 @@ function initEntranceAnimation() {
 // ============================================
 
 function init() {
-  console.log('🚀 Portfolio Rayhan - Initialized');
+  console.log('🍎 Portfolio v2025');
   
   // Initialize all modules
   new ThemeManager();
   new Navigation();
   new ScrollAnimations();
-  new ParticleSystem();
   new ActiveNavLink();
   new SmoothScroll();
   new CardHoverEffects();
   
   setCurrentYear();
   initEntranceAnimation();
+  initLogoScroll();
+  improveAccessibility();
+  monitorPerformance();
   
-  // Performance monitoring
-  if (window.performance) {
-    const perfData = window.performance.timing;
-    const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
-    console.log(`📊 Page loaded in: ${pageLoadTime}ms`);
-  }
+  // Announce page ready for screen readers
+  setTimeout(() => {
+    const announcement = document.createElement('div');
+    announcement.setAttribute('role', 'status');
+    announcement.setAttribute('aria-live', 'polite');
+    announcement.className = 'sr-only';
+    announcement.textContent = 'Page chargée';
+    document.body.appendChild(announcement);
+  }, 100);
 }
 
 // ============================================
@@ -542,11 +575,11 @@ function init() {
 // ============================================
 
 window.addEventListener('error', (e) => {
-  console.error('Global error:', e.error);
+  console.error('❌ Global error:', e.error);
 });
 
 window.addEventListener('unhandledrejection', (e) => {
-  console.error('Unhandled promise rejection:', e.reason);
+  console.error('❌ Unhandled promise rejection:', e.reason);
 });
 
 // ============================================
@@ -559,9 +592,18 @@ if (document.readyState === 'loading') {
   init();
 }
 
-// Expose for debugging
+// ============================================
+// EXPOSE FOR DEBUGGING
+// ============================================
+
 window.PortfolioDebug = {
   CONFIG,
-  version: '2.0'
+  version: '2025',
+  theme: () => document.body.getAttribute('data-theme')
 };
+
+
+
+
+
 

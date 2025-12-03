@@ -1,43 +1,532 @@
 /* ============================================================
-   RAYHAI Engine v4 — Premium+
-   - Mini-LLM local (pattern-based) — offline-capable (option C)
-   - Intent detection
-   - Hybrid tone (pro + humain)
-   - Persona-aware (uses /ai/persona.json)
-   - No persistent memory (as requested)
-   - Online fallback if API key provided
-   - Designed to be pasted into /ai/engine.js
+   RAYHAI Engine v6 — Premium First Person
+   JE SUIS RAYHAN - Pas un assistant, MOI en version IA
+   
+   - Réponses à la première personne (JE/MON/MES)
+   - Contexte conversationnel intelligent
+   - Mémoire de session avancée
+   - Détection d'intentions multi-niveaux
+   - Streaming et typing effect
+   - Persona authentique
    ============================================================ */
 
 (function () {
   "use strict";
 
-  // ---------- Internal state ----------
+  // ========== State ==========
   let PERSONA = null;
   let READY = false;
-  let _API_KEY = null;
+  const SESSION = {
+    context: [],
+    lastIntent: null,
+    lastTopic: null,
+    userMood: "neutral",
+    conversationDepth: 0,
+    userName: null
+  };
 
-  // ---------- Utilities ----------
+  // ========== Utils ==========
   const clean = (s) => String(s || "").toLowerCase().trim();
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-  const safeJoin = (arr, sep = ", ") => (Array.isArray(arr) ? arr.join(sep) : "");
+  const similarity = (a, b) => {
+    const setA = new Set(a.toLowerCase().split(/\s+/));
+    const setB = new Set(b.toLowerCase().split(/\s+/));
+    const intersection = [...setA].filter(x => setB.has(x)).length;
+    return intersection / Math.max(setA.size, setB.size, 1);
+  };
 
-  // ---------- Load persona ----------
+  // ========== Load Persona ==========
   async function loadPersona() {
     try {
       const res = await fetch("./ai/persona.json", { cache: "no-store" });
       if (!res.ok) throw new Error("persona.json non trouvé");
       PERSONA = await res.json();
+      console.info("✅ RayhAI Persona chargée - Mode First Person");
     } catch (e) {
-      console.warn("RayhAI: impossible de charger persona.json", e);
-      PERSONA = {}; // degrade gracefully
+      console.warn("⚠️ Impossible de charger persona.json", e);
+      PERSONA = { 
+        identity: { name: "Rayhan Maouaci" },
+        about_me: { short: "Étudiant en Terminale CIEL" }
+      };
     } finally {
       READY = true;
-      return PERSONA;
+    }
+    return PERSONA;
+  }
+
+  // ========== Context Management ==========
+  function addToContext(role, text, intent = null) {
+    SESSION.context.push({ role, text, intent, timestamp: Date.now() });
+    if (SESSION.context.length > 10) SESSION.context.shift();
+    SESSION.conversationDepth++;
+  }
+
+  function getRecentContext(limit = 3) {
+    return SESSION.context.slice(-limit);
+  }
+
+  function detectMoodShift(text) {
+    const t = clean(text);
+    const triggers = PERSONA?.context_triggers || {};
+    
+    if (triggers.motivation_keywords && triggers.motivation_keywords.some(w => t.includes(w))) {
+      SESSION.userMood = "motivated";
+    } else if (triggers.difficulty_keywords && triggers.difficulty_keywords.some(w => t.includes(w))) {
+      SESSION.userMood = "frustrated";
+    } else if (t.includes("stress") || t.includes("anxieux") || t.includes("pression")) {
+      SESSION.userMood = "stressed";
+    } else {
+      SESSION.userMood = "neutral";
     }
   }
 
-  // Expose persona getter
+  function detectUserName(text) {
+    const patterns = [
+      /je m'appelle ([a-zàâäéèêëïîôùûüç]+)/i,
+      /mon nom est ([a-zàâäéèêëïîôùûüç]+)/i,
+      /c'est ([a-zàâäéèêëïîôùûüç]+)/i
+    ];
+    
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        SESSION.userName = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+        return SESSION.userName;
+      }
+    }
+    return null;
+  }
+
+  // ========== Advanced Intent Detection ==========
+  function detectIntent(text) {
+    const t = clean(text);
+    const triggers = PERSONA?.context_triggers || {};
+
+    // Detect user name first
+    detectUserName(text);
+
+    // Multi-level intent system
+    const intents = {
+      // Greetings & Social
+      greeting: {
+        patterns: [/^(salut|bonjour|hello|hey|yo|coucou|bjr)/],
+        priority: 1
+      },
+      farewell: {
+        patterns: [/^(au revoir|bye|ciao|à plus|tchao|bonne (nuit|soirée|journée)|a\+)/],
+        priority: 1
+      },
+      thanks: {
+        patterns: [/merci|thanks|thx|remercie/],
+        priority: 1
+      },
+      small_talk: {
+        patterns: [/ça va|comment (tu )?vas|tu vas bien|quoi de neuf|comment ça va/],
+        priority: 1
+      },
+      
+      // Identity & Personal
+      who_are_you: {
+        patterns: [/qui es[- ]tu|t'?es qui|te présent|comment tu t'appelles|c'est qui rayhan/],
+        priority: 1
+      },
+      your_skills: {
+        patterns: [/tes (compétences|skills)|tu sais faire quoi|tu maîtrises quoi|ce que tu sais/],
+        priority: 1
+      },
+      your_projects: {
+        patterns: [/tes projets|projet[s]? (que tu|tu as)|ce que tu (as fait|fais)/],
+        priority: 1
+      },
+      your_experience: {
+        patterns: [/(ton|tes) (expérience|stage|parcours)|où tu as travaillé|ce que tu as fait/],
+        priority: 1
+      },
+      your_goals: {
+        patterns: [/(tes|ton) (objectif|but|ambition|plan|avenir)|tu veux faire quoi|après le bac/],
+        priority: 1
+      },
+      contact: {
+        patterns: [/contacter|contact|email|joindre|ton (mail|email|numéro)/],
+        priority: 1
+      },
+      
+      // Technical Help
+      code_help: {
+        patterns: [/bug|erreur|marche pas|fonctionne pas|problème de code/],
+        keywords: triggers.code_keywords,
+        priority: 2
+      },
+      explain_tech: {
+        patterns: [/c'?est quoi|explique|comment (ça |ca )?marche|qu'est[- ]ce que/],
+        keywords: triggers.learning_keywords,
+        priority: 2
+      },
+      code_review: {
+        patterns: [/regarde|vérifie|check|analyse mon code|optimise/],
+        priority: 2
+      },
+      
+      // Project & Career
+      project_idea: {
+        patterns: [/projet|créer|développer|builder|faire un|idée de/],
+        keywords: triggers.project_keywords,
+        priority: 2
+      },
+      career_advice: {
+        patterns: [/orientation|bts|stage|emploi|formation|carrière|études/],
+        keywords: triggers.career_keywords,
+        priority: 2
+      },
+      
+      // Motivation & Support
+      need_motivation: {
+        patterns: [/motivé|courage|envie|objectif|avancer|progresser/],
+        keywords: triggers.motivation_keywords,
+        priority: 2
+      },
+      feeling_stuck: {
+        patterns: [/galère|compliqué|bloqué|comprends (pas|rien)|impossible|difficile/],
+        keywords: triggers.difficulty_keywords,
+        priority: 2
+      },
+      stressed: {
+        patterns: [/stress|pression|anxieux|inquiet|débordé|peur/],
+        priority: 2
+      }
+    };
+
+    // Check patterns with priority
+    let matches = [];
+    for (const [name, config] of Object.entries(intents)) {
+      if (config.patterns && config.patterns.some(p => p.test(t))) {
+        matches.push({ name, priority: config.priority });
+      }
+      if (config.keywords && config.keywords.some(k => t.includes(k))) {
+        matches.push({ name, priority: config.priority });
+      }
+    }
+
+    // Return highest priority match
+    if (matches.length > 0) {
+      matches.sort((a, b) => a.priority - b.priority);
+      const intent = matches[0].name;
+      SESSION.lastIntent = intent;
+      return intent;
+    }
+
+    // Context-based fallback
+    if (SESSION.lastIntent && SESSION.conversationDepth > 0) {
+      const recent = getRecentContext(1);
+      if (recent.length > 0) {
+        const lastText = recent[0].text;
+        if (similarity(text, lastText) > 0.3) {
+          return "follow_up";
+        }
+      }
+    }
+
+    return "general";
+  }
+
+  // ========== Topic Extraction ==========
+  function extractTopic(text) {
+    const t = clean(text);
+    const triggers = PERSONA?.context_triggers || {};
+    
+    // Personal topics
+    if (triggers.personal_keywords && triggers.personal_keywords.some(k => t.includes(k))) {
+      return "PARCOURS PERSONNEL";
+    }
+    
+    // Technical topics
+    if (triggers.code_keywords && triggers.code_keywords.some(k => t.includes(k))) {
+      const match = triggers.code_keywords.find(k => t.includes(k));
+      return match ? match.toUpperCase() : "CODE";
+    }
+    
+    // Career topics
+    if (triggers.career_keywords && triggers.career_keywords.some(k => t.includes(k))) {
+      return "CARRIÈRE";
+    }
+    
+    // Project topics
+    if (triggers.project_keywords && triggers.project_keywords.some(k => t.includes(k))) {
+      return "PROJET";
+    }
+    
+    return SESSION.lastTopic || "GÉNÉRAL";
+  }
+
+  // ========== Response Generator (First Person) ==========
+  function generateResponse(intent, text, topic) {
+    const style = PERSONA?.conversation_style || {};
+    const userName = SESSION.userName ? ` ${SESSION.userName}` : "";
+
+    // Time-based greetings
+    const hour = new Date().getHours();
+    const timeOfDay = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+
+    switch (intent) {
+      case "greeting": {
+        const greetings = style.greeting?.[timeOfDay] || [
+          `Salut${userName} ! Comment je peux t'aider ? 😊`,
+          `Hey${userName} ! Qu'est-ce qu'on fait aujourd'hui ?`
+        ];
+        return pick(greetings);
+      }
+
+      case "farewell":
+        return pick(style.farewell || [`À bientôt${userName} ! 👋`, "Ciao ! N'hésite pas à revenir 🚀"]);
+
+      case "thanks":
+        return pick(style.thanks_received || ["De rien ! 😊", "Avec plaisir 👍", "Pas de souci !"]);
+
+      case "small_talk":
+        return pick([
+          `Tout roule${userName} ! Et toi, ça avance ? 😊`,
+          "Ça va bien ! Tu bosses sur quoi en ce moment ?",
+          "Nickel ! Besoin d'aide sur un truc ?"
+        ]);
+
+      case "who_are_you": {
+        const identity = PERSONA?.identity || {};
+        const about = PERSONA?.about_me?.long || "Étudiant passionné par la tech";
+        return `Je suis Rayhan Maouaci, ${identity.age} ans, actuellement en ${identity.status} au ${identity.school || "lycée Georges Cisson"}.\n\n${about}\n\nMon portfolio te montre mes projets, mes compétences et mon parcours. Tu veux savoir quelque chose en particulier ? 🚀`;
+      }
+
+      case "your_skills": {
+        const skills = PERSONA?.skills || {};
+        let response = "Voici ce que je maîtrise :\n\n";
+        
+        if (skills.web) {
+          response += `💻 **Dev Web** (${skills.web.level}) :\n${skills.web.description}\nTechs : ${skills.web.techs.join(", ")}\n\n`;
+        }
+        if (skills.systems) {
+          response += `⚙️ **Systèmes & Réseaux** (${skills.systems.level}) :\n${skills.systems.description}\n\n`;
+        }
+        if (skills.cybersecurity) {
+          response += `🔐 **Cybersécurité** (${skills.cybersecurity.level}) :\n${skills.cybersecurity.description}\n\n`;
+        }
+        if (skills.ai) {
+          response += `🤖 **IA** (${skills.ai.level}) :\n${skills.ai.description}\n\n`;
+        }
+        
+        response += "Sur quoi tu veux que je t'aide ?";
+        return response;
+      }
+
+      case "your_projects": {
+        const projects = PERSONA?.projects || [];
+        if (projects.length === 0) {
+          return "Je travaille sur plusieurs projets, notamment mon portfolio et RayhAI. Tu veux des détails sur un projet en particulier ?";
+        }
+        
+        let response = "Mes projets principaux :\n\n";
+        projects.slice(0, 3).forEach(p => {
+          response += `🚀 **${p.name}** (${p.year})\n${p.description}\n`;
+          if (p.techs) response += `Techs : ${p.techs.join(", ")}\n`;
+          response += `\n`;
+        });
+        
+        response += "Lequel t'intéresse ?";
+        return response;
+      }
+
+      case "your_experience": {
+        const exps = PERSONA?.experiences || [];
+        if (exps.length === 0) {
+          return "J'ai fait plusieurs stages en électronique, fibre optique et support IT. Tu veux des détails ?";
+        }
+        
+        let response = "Mon parcours pro jusqu'ici :\n\n";
+        exps.forEach(exp => {
+          response += `📍 **${exp.title}** - ${exp.location} (${exp.year})\n`;
+          if (exp.duration) response += `Durée : ${exp.duration}\n`;
+          if (exp.tasks) {
+            response += `Missions : ${exp.tasks.join(", ")}\n`;
+          }
+          response += `\n`;
+        });
+        
+        return response;
+      }
+
+      case "your_goals": {
+        const goals = PERSONA?.goals || {};
+        return `Mes objectifs 🎯 :\n\n` +
+               `📚 **Court terme** : ${goals.immediate || "Obtenir mon Bac Pro CIEL"}\n` +
+               `🎓 **2025** : ${goals.short_term || "Intégrer un BTS SIO SLAM"}\n` +
+               `💼 **Moyen terme** : ${goals.mid_term || "Devenir expert en dev et cybersécurité"}\n` +
+               `🚀 **Long terme** : ${goals.long_term || "Créer mes propres projets tech"}\n\n` +
+               `Et toi, t'es dans quelle démarche ?`;
+      }
+
+      case "contact": {
+        const contact = PERSONA?.availability?.contact || {};
+        return `Tu peux me contacter facilement :\n\n` +
+               `📧 **Email** : ${contact.email || "ray.maouaci@gmail.com"}\n` +
+               `💻 **GitHub** : ${contact.github || "@RayhanMAOUACI"}\n` +
+               `📍 **Localisation** : Toulon, PACA\n\n` +
+               `${contact.response_time || "Je réponds vite, sous 24h généralement."}\n\n` +
+               `C'est pour quoi ? Stage, alternance, projet ?`;
+      }
+
+      case "code_help": {
+        const canHelp = PERSONA?.knowledge_base?.web_dev?.can_help_with || [];
+        return `Ok, montre-moi ton code ! 💻\n\n` +
+               `Je peux t'aider sur : ${canHelp.slice(0, 4).join(", ")}...\n\n` +
+               `Décris-moi le problème ou colle ton code, on va le résoudre ensemble.`;
+      }
+
+      case "explain_tech": {
+        const subject = text.replace(/c'?est quoi|explique|comment|qu'est[- ]ce que/gi, "").trim();
+        const cleaned = subject.split(/[:\n]+/).pop().trim();
+        
+        if (!cleaned || cleaned.length < 3) {
+          return "Qu'est-ce que tu veux que je t'explique ? Donne-moi un sujet précis (HTML, CSS, réseaux, etc.).";
+        }
+        
+        return `Ok, je t'explique **${cleaned}** :\n\n` +
+               `[Je vais te donner une explication claire avec des exemples concrets]\n\n` +
+               `Tu veux que je rentre plus dans les détails ?`;
+      }
+
+      case "project_idea": {
+        return `Cool, un nouveau projet ! 🚀\n\n` +
+               `Raconte-moi :\n` +
+               `• C'est quoi l'idée ?\n` +
+               `• Quelles technos tu veux utiliser ?\n` +
+               `• T'as déjà commencé ou c'est au stade de l'idée ?\n\n` +
+               `Je vais t'aider à structurer ça.`;
+      }
+
+      case "career_advice": {
+        const myGoals = PERSONA?.goals?.short_term || "un BTS SIO SLAM";
+        return `Parlons orientation ! 🎓\n\n` +
+               `Moi je vise ${myGoals}. Selon ton profil, je te conseillerais :\n\n` +
+               `• **BTS SIO SLAM** : Dev, solutions logicielles, gestion projets\n` +
+               `• **BTS SIO SISR** : Admin systèmes, réseaux, infrastructure\n` +
+               `• **Cybersécurité** : Si la sécu et les systèmes te passionnent\n\n` +
+               `T'es intéressé par quoi exactement ?`;
+      }
+
+      case "need_motivation": {
+        const mindset = PERSONA?.mindset?.growth || "Chaque jour, je suis meilleur qu'hier";
+        return pick([
+          `${mindset} 💪\n\nFixe-toi une action concrète pour aujourd'hui. C'est quoi ta priorité ?`,
+          `Tu as toutes les capacités ! Découpe en petites étapes et avance pas à pas. 🔥`,
+          `Belle mentalité${userName} ! Concentre-toi sur un objectif à la fois. Lequel ?`
+        ]);
+      }
+
+      case "feeling_stuck": {
+        return `Je vois que ça coince${userName}. Pas de panique ! 🧘\n\n` +
+               `On va décomposer le problème :\n` +
+               `1. Où exactement tu bloques ?\n` +
+               `2. Qu'est-ce que tu as déjà essayé ?\n` +
+               `3. Quel est le comportement attendu ?\n\n` +
+               `Explique-moi en détail, on va trouver la solution.`;
+      }
+
+      case "stressed": {
+        return `Respire un coup${userName}. 🌬️\n\n` +
+               `On va prioriser :\n` +
+               `1. Qu'est-ce qui est le plus urgent ?\n` +
+               `2. Qu'est-ce qui peut attendre ?\n` +
+               `3. Sur quoi tu as besoin d'aide maintenant ?\n\n` +
+               `Dis-moi ce qui te pèse le plus.`;
+      }
+
+      case "follow_up":
+        return "Je t'écoute, continue.";
+
+      case "general":
+      default: {
+        if (SESSION.conversationDepth > 2) {
+          return `Je ne suis pas sûr de bien comprendre${userName}. Tu peux reformuler ou me donner plus de contexte ?`;
+        }
+        
+        const intro = PERSONA?.identity?.intro || "Je suis Rayhan, étudiant en Terminale CIEL";
+        return `${intro}\n\n` +
+               `Je peux t'aider avec :\n` +
+               `💻 Code & debug\n` +
+               `🚀 Projets web\n` +
+               `🎓 Orientation\n` +
+               `💪 Motivation\n\n` +
+               `Qu'est-ce que tu veux faire ?`;
+      }
+    }
+  }
+
+  // ========== Main Ask Function ==========
+  async function ask(text) {
+    if (!READY) await loadPersona();
+    if (!text || !text.trim()) return "Écris quelque chose ! 😊";
+
+    // Clean and prepare
+    const cleanText = text.trim();
+
+    // Add to context
+    addToContext("user", cleanText);
+
+    // Detect mood and intent
+    detectMoodShift(cleanText);
+    const intent = detectIntent(cleanText);
+    const topic = extractTopic(cleanText);
+
+    SESSION.lastTopic = topic;
+
+    // Generate response
+    let response;
+    try {
+      response = generateResponse(intent, cleanText, topic);
+    } catch (e) {
+      console.error("RayhAI Engine error:", e);
+      response = "Oups, j'ai eu un bug. Réessaye ? 😅";
+    }
+
+    // Add response to context
+    addToContext("assistant", response, intent);
+
+    return response;
+  }
+
+  // ========== Session Management ==========
+  function resetSession() {
+    SESSION.context = [];
+    SESSION.lastIntent = null;
+    SESSION.lastTopic = null;
+    SESSION.userMood = "neutral";
+    SESSION.conversationDepth = 0;
+    SESSION.userName = null;
+  }
+
+  function getSessionInfo() {
+    return {
+      depth: SESSION.conversationDepth,
+      mood: SESSION.userMood,
+      lastIntent: SESSION.lastIntent,
+      lastTopic: SESSION.lastTopic,
+      userName: SESSION.userName,
+      contextSize: SESSION.context.length
+    };
+  }
+
+  // ========== Export ==========
+  window.RayhaiEngine = {
+    ask,
+    loadPersona,
+    resetSession,
+    getSessionInfo,
+    _internal: {
+      detectIntent,
+      extractTopic,
+      generateResponse
+    }
+  };
+
+  // ========== Public Persona API ==========
   window.RayhaiPersona = {
     get: async () => {
       if (!PERSONA) await loadPersona();
@@ -45,381 +534,11 @@
     }
   };
 
-  // Load persona at boot (non-blocking)
-  loadPersona();
-
-  // ---------- Intent detection (simple, rule-based) ----------
-  function detectIntent(q) {
-    const t = clean(q);
-
-    const intents = [
-      { name: "greeting", patterns: [/^(salut|bonjour|hello|hey|yo)/] },
-      { name: "how_are_you", patterns: [/ça va|ca va|comment tu vas|tu vas bien/] },
-      { name: "who_are_you", patterns: [/qui es tu|tu es qui|t'es qui|présente toi|comment tu t'appelles|quel est ton nom/] },
-      { name: "ask_age", patterns: [/âge|age|ans/], },
-      { name: "ask_skills", patterns: [/compétence|skill|skills|niveau|technologie|web|dev/], },
-      { name: "ask_projects", patterns: [/projet|portfolio|travaux/], },
-      { name: "ask_objective", patterns: [/objectif|avenir|bts|objectif pro/], },
-      { name: "ask_languages", patterns: [/langue|parle|languages|anglais|français/], },
-      { name: "joke", patterns: [/blague|mdr|rigole|ptdr/], },
-      { name: "weather", patterns: [/météo|temps|il fait/], },
-      { name: "motivation", patterns: [/motivation|motivé|découragé|démotivé/], },
-      { name: "help", patterns: [/aide|aide moi|aide-moi|conseil|conseils/], },
-      { name: "explain", patterns: [/explique|c'est quoi|c’est quoi|cest quoi|signifie/], },
-      { name: "code_help", patterns: [/html|css|js|javascript|code|bug|erreur|dev/], },
-      { name: "emotion_sad", patterns: [/(triste|mal|déprimé|déprime|down)/] },
-      { name: "emotion_angry", patterns: [/(énervé|agacé|furieux|rage|colère)/] },
-      { name: "emotion_stressed", patterns: [/(stress|angoisse|pression|inquiet)/] },
-      { name: "emotion_lonely", patterns: [/(seul|seule|personne|solitude)/] },
-      { name: "fallback", patterns: [/.*/] } // default fallback
-    ];
-
-    for (const intent of intents) {
-      for (const p of intent.patterns) {
-        if (p.test(t)) return intent.name;
-      }
-    }
-    return "fallback";
-  }
-
-  // ---------- Mini-LLM / Pattern Engine ----------
-  // Purpose: provide rich, context-aware answers offline using patterns + persona data.
-  // It is NOT a neural model but a sophisticated rule-and-template engine.
-  function miniLLM(prompt) {
-    const t = clean(prompt);
-    const persona = PERSONA || {};
-    const user = persona.identity?.user_profile || {};
-    const name = persona.name || user.prenom || "RayhAI";
-
-    // Priority intents
-    const intent = detectIntent(prompt);
-
-    // Helpers to build persona-based answers
-    const personaSkills = (() => {
-      const web = persona.skills?.web || [];
-      const tech = persona.skills?.tech || [];
-      const ai = persona.skills?.ai_support || [];
-      return { web, tech, ai };
-    })();
-
-    // Templates
-    const templates = {
-      greeting: [
-        `Salut — je suis ${name}. Comment puis-je t'aider aujourd’hui ?`,
-        `Bonjour. RayhAI à ton service. Que souhaites-tu faire ?`
-      ],
-      how_are_you: [
-        "Je vais très bien, merci ! Et toi ?",
-        "Toujours prête à aider. Comment tu vas ?"
-      ],
-      who_are_you: [
-        `Je suis RayhAI, l'assistante intégrée à ce site. Je guide, j'explique et j'aide à améliorer le portfolio.`,
-        `RayhAI — assistante personnelle. Je t'aide à corriger, expliquer et optimiser.`
-      ],
-      ask_age: [
-        user.age ? `${user.prenom || persona.name} a ${user.age} ans.` : `L'âge n'est pas renseigné dans le persona.`
-      ],
-      ask_skills: [
-        () => {
-          const web = personaSkills.web.length ? `Web: ${personaSkills.web.join(", ")}` : "";
-          const tech = personaSkills.tech.length ? `Tech: ${personaSkills.tech.join(", ")}` : "";
-          const ai = personaSkills.ai.length ? `IA: ${personaSkills.ai.join(", ")}` : "";
-          const parts = [web, tech, ai].filter(Boolean).join(" — ");
-          return parts ? `Compétences : ${parts}.` : "Aucune compétence listée dans le persona.";
-        }
-      ],
-      ask_projects: [
-        persona.projects && persona.projects.length ? `Projets : ${persona.projects.join(" • ")}.` : "Aucun projet listé."
-      ],
-      ask_objective: [
-        persona.objectives?.pro ? `Objectif: ${persona.objectives.pro}.` : "Aucun objectif professionnel renseigné."
-      ],
-      ask_languages: [
-        persona.languages && persona.languages.length ? `${persona.name || ""} parle : ${persona.languages.join(", ")}.` : "Aucune langue renseignée."
-      ],
-      joke: [
-        "Pourquoi les développeurs n’aiment pas la nature ? Trop de bugs.",
-        "Blague courte : Pourquoi le JavaScript traverse la route ? Pour rejoindre l'autre callback."
-      ],
-      weather: [
-        "Je n'ai pas accès à la météo ici, mais je peux t'aider à ajouter une API météo si tu veux."
-      ],
-      motivation: [
-        "Une petite action aujourd'hui vaut mieux que dix idées demain. On décompose ensemble ?",
-        "Commence par une tâche de 15 minutes — souvent, c'est tout ce qu'il faut."
-      ],
-      help: [
-        "Dis-moi précisément ce que tu veux faire (corriger du code ? améliorer le design ?). Je donne un plan clair.",
-        "Je peux te proposer une checklist actionnable. Dis-moi le contexte."
-      ],
-      explain: [
-        (subject) => `Voici une explication simple pour "${subject}" : ... (réponds avec plus de détails pour approfondir).`
-      ],
-      code_help: [
-        "Envoie ton extrait de code et j'identifierai les erreurs et proposerai une correction précise.",
-        "Je peux optimiser ton JS/CSS/HTML : colle le code et j'analyse."
-      ],
-      emotion_sad: [
-        "Je suis désolé que tu te sentes comme ça. Tu veux en parler ou préfères des actions concrètes pour te sentir mieux ?"
-      ],
-      emotion_angry: [
-        "Je sens la frustration. On souffle un bon coup et on attaque le problème pas à pas — raconte-moi ce qu'il se passe."
-      ],
-      emotion_stressed: [
-        "On va décomposer la charge. Quel est le sujet le plus urgent ?"
-      ],
-      emotion_lonely: [
-        "Je suis là pour écouter. Dis-moi ce qui te pèse."
-      ],
-      fallback: [
-        "Je ne suis pas certain d’avoir saisi. Peux-tu préciser ?",
-        "Donne-moi un peu plus de contexte et je te réponds de façon précise."
-      ]
-    };
-
-    // ---------- Pattern-based matching for "explain c'est quoi X" ----------
-    // If the user asked "c'est quoi X" or "explique X", try to capture X and produce template
-// Robust explain capture: prefer text after ':' or after the first blank line (selection),
-// and ignore short noise words like "simplement" when no real subject is present.
-const explainMatch =
-  t.match(/^c('?est)? ?quoi (.+)/) ||
-  t.match(/^explique(?:-moi)?(?: )?(.+)/);
-
-if (explainMatch) {
-  // raw capture (group 2 for "c'est quoi", group 1 for "explique")
-  let raw = (explainMatch[2] || explainMatch[1] || "").trim();
-
-  // If prompt contains a colon, prefer text after the first colon
-  if (raw.includes(":")) {
-    const afterColon = raw.split(":").slice(1).join(":").trim();
-    if (afterColon) raw = afterColon;
-  }
-
-  // If prompt contains an explicit blank line (selection follows), prefer the part after the blank line
-  // (handles cases where askEngine("Explique simplement :\n\n<selection>") was used)
-  if (raw.includes("\n")) {
-    const parts = raw.split(/\n+/).map(s => s.trim()).filter(Boolean);
-    if (parts.length > 1) {
-      // usually the selection is after the blank line -> pick last non-empty part
-      raw = parts.slice(-1)[0];
-    } else {
-      raw = parts[0] || raw;
-    }
-  }
-
-  // Remove obvious noise words if the subject is overly short
-  const cleaned = raw.replace(/^[\s\W]+|[\s\W]+$/g, "").replace(/^simplement\b/i, "").trim();
-
-  // If after cleaning we still have a short/informal token (<=2 chars), treat as missing
-  if (!cleaned || cleaned.length <= 2) {
-    // don't invent: ask the user for the subject
-    return "Je peux expliquer quelque chose pour toi — précise ce que tu veux que j'explique.";
-  }
-
-  // limit subject length
-  const subject = cleaned.length > 200 ? cleaned.slice(0, 200) + "…" : cleaned;
-  return templates.explain[0](subject);
-}
-
-
-    // Intent-driven reply
-    switch (intent) {
-      case "greeting": return pick(templates.greeting);
-      case "how_are_you": return pick(templates.how_are_you);
-      case "who_are_you": return pick(templates.who_are_you);
-      case "ask_age": return (typeof templates.ask_age[0] === "function") ? templates.ask_age[0]() : templates.ask_age[0];
-      case "ask_skills": return (typeof templates.ask_skills[0] === "function") ? templates.ask_skills[0]() : templates.ask_skills[0];
-      case "ask_projects": return templates.ask_projects[0];
-      case "ask_objective": return templates.ask_objective[0];
-      case "ask_languages": return templates.ask_languages[0];
-      case "joke": return pick(templates.joke);
-      case "weather": return templates.weather[0];
-      case "motivation": return pick(templates.motivation);
-      case "help": return pick(templates.help);
-      case "code_help": return pick(templates.code_help);
-      case "explain": // handled earlier; fallback to templates
-        return pick(templates.explain).replace(/\{subject\}/, "");
-      case "emotion_sad": return pick(templates.emotion_sad);
-      case "emotion_angry": return pick(templates.emotion_angry);
-      case "emotion_stressed": return pick(templates.emotion_stressed);
-      case "emotion_lonely": return pick(templates.emotion_lonely);
-      default:
-        // Attempt fuzzy persona match (improved and safe)
-        const identityBlock = /(qui es tu|t'es qui|tu es qui|quel est ton nom|comment tu t'appelles|présente toi)/;
-        const shortOrSocial = /(ça va|ca va|salut|bonjour|hey|yo)/;
-        if (!identityBlock.test(t) && !shortOrSocial.test(t)) {
-          // Search persona keys for informative matches
-          const keys = ["passions", "projects", "skills", "languages"];
-          for (const k of keys) {
-            if (!persona[k]) continue;
-            const data = (Array.isArray(persona[k]) ? persona[k].join(" ") : JSON.stringify(persona[k])).toLowerCase();
-            const words = t.split(/\s+/).filter(w => w.length > 2);
-            if (words.some(w => data.includes(w))) {
-              // build preview
-              const preview = data.split(/\s+/).slice(0, 12).join(" ");
-              return `Je peux te donner plus d'infos sur "${t}". Par exemple : ${preview}... Veux-tu un détail précis ?`;
-            }
-          }
-        }
-        // Default fallback
-        return pick(templates.fallback);
-    }
-  } // end miniLLM
-
-  // ---------- Local responder (short & emotional replies) ----------
-  // This handles micro-conversations, quick replies, and emotional detection.
-  function localResponder(q) {
-    if (!q) return null;
-    if (!PERSONA) return "Chargement du système…";
-
-    const t = clean(q);
-    const persona = PERSONA || {};
-    const user = persona.identity?.user_profile || {};
-    const name = persona.name || user.prenom || "RayhAI";
-
-    // Emotions detection (fine-grained)
-    const tone = {
-      happy: /(super|génial|trop bien|content|heureux|parfait|cool|nice)/.test(t),
-      sad: /(triste|mal|déprimé|fatigué|déçu|down|chagrin)/.test(t),
-      angry: /(énervé|agacé|furieux|rage|colère|jpp|cassé|chiant)/.test(t),
-      confused: /(comprends pas|bloqué|j'arrive pas|c compliqué|je galère|perdu)/.test(t),
-      stressed: /(stress|angoisse|peur|inquiet|pression|overthink)/.test(t),
-      lonely: /(seul|solitude|personne|parle|besoin de parler)/.test(t)
-    };
-
-    if (tone.happy) return pick([
-      "Belle énergie — on continue ?",
-      "Super ! Tu veux qu’on avance sur un projet ?"
-    ]);
-    if (tone.sad) return pick([
-      "Je suis là si tu veux parler. Tu veux en discuter ou préfères des actions concrètes ?",
-      "Pas simple… dis-moi ce qui te pèse et on fait un plan."
-    ]);
-    if (tone.angry) return pick([
-      "Je sens la frustration. On décortique ensemble ce qui pose problème.",
-      "Respire. Décris-moi ce qui t’a mis en rage, on solutionne."
-    ]);
-    if (tone.confused) return "Pas d’inquiétude — on va clarifier ça ensemble. Explique-moi le blocage.";
-    if (tone.stressed) return "Calme et méthode : quel est l’élément le plus urgent ?";
-    if (tone.lonely) return "Je t’écoute. Dis-moi ce que tu ressens.";
-
-    // Quick intents via miniLLM for robust but fast answers
-    const intent = detectIntent(q);
-    const quickIntents = new Set([
-      "greeting","how_are_you","who_are_you","ask_age","ask_skills",
-      "ask_projects","ask_objective","ask_languages","joke","weather","motivation","help"
-    ]);
-    if (quickIntents.has(intent)) {
-      return miniLLM(q);
-    }
-
-    // Short conversational fallbacks
-    if (/merci/.test(t)) return "Avec plaisir.";
-    if (/ok|d'accord|parfait/.test(t)) return "Parfait. On continue ?";
-    if (/météo|temps/.test(t)) return "Je n'ai pas la météo ici, mais je peux t'aider à intégrer une API si tu veux.";
-    if (/blague|mdr|rigole/.test(t)) return miniLLM("blague");
-    if (/html|css|js|javascript|code|bug|erreur|dev/.test(t)) return "Envoie ton code et j'analyse rapidement.";
-    if (t.length <= 3) return "Je t'écoute — précise un peu s'il te plaît.";
-
-    // Fallback to miniLLM for richer answer
-    return miniLLM(q);
-  }
-
-  // ---------- OpenAI fallback (optional) ----------
-  function setApiKey(key, persist = false) {
-    _API_KEY = key ? String(key).trim() : null;
-    if (persist && _API_KEY) {
-      try { localStorage.setItem("RAYHAI_API_KEY", _API_KEY); } catch (e) {}
-    }
-    return _API_KEY;
-  }
-
-  // load persisted key if any
-  try {
-    const saved = localStorage.getItem("RAYHAI_API_KEY");
-    if (saved) _API_KEY = saved;
-  } catch (e) {}
-
-  async function openAIRequest(prompt) {
-    if (!_API_KEY) throw new Error("OpenAI API key not set");
-    const persona = PERSONA || {};
-    const system = `You are RayhAI, assistant for ${persona.name || "a user"}. Answer in French. Be concise, professional and friendly.`;
-    const body = {
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.25,
-      max_tokens: 700
-    };
-    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type":"application/json",
-        "Authorization":"Bearer " + _API_KEY
-      },
-      body: JSON.stringify(body)
-    });
-    if (!resp.ok) {
-      const txt = await resp.text();
-      throw new Error("OpenAI error: " + resp.status + " " + txt);
-    }
-    const data = await resp.json();
-    return data?.choices?.[0]?.message?.content || null;
-  }
-
-  // ---------- Public API: ask() ----------
-  async function ask(text) {
-    if (!READY) await loadPersona(); // ensure persona loaded
-    // 1) quick local responder (ultra-fast)
-    try {
-      const localQuick = localResponder(text);
-      if (localQuick && typeof localQuick === "string") {
-        // If the localQuick looks like a fallback generic short prompt, we still return it (fast UX)
-        return localQuick;
-      }
-    } catch (e) {
-      console.warn("RayhAI local quick error", e);
-    }
-
-    // 2) miniLLM deeper attempt (pattern engine)
-    try {
-      const deep = miniLLM(text);
-      if (deep && typeof deep === "string") {
-        return deep;
-      }
-    } catch (e) {
-      console.warn("RayhAI miniLLM error", e);
-    }
-
-    // 3) Online fallback (if API key configured)
-    if (_API_KEY) {
-      try {
-        const remote = await openAIRequest(text);
-        if (remote) return remote;
-      } catch (e) {
-        console.warn("RayhAI openAI error", e);
-      }
-    }
-
-    // 4) Final fallback
-    return "Désolé, je n'ai pas de réponse complète pour ça en local. Reformule ou demande un autre sujet.";
-  }
-
-  // ---------- Export ----------
-  window.RayhaiEngine = {
-    ask,
-    setApiKey,
-    loadPersona,
-    _internal: { miniLLM, localResponder, detectIntent }
-  };
-
-  // init
-  // ensure persona loaded
+  // ========== Init ==========
   loadPersona().then(() => {
     READY = true;
-    console.info && console.info("RayhAI Engine v4 ready (Premium+)");
-  }).catch(() => { READY = true; });
+    console.info("🚀 RayhAI Engine v6 Ready");
+    console.info("💬 Je suis Rayhan, prêt à discuter !");
+  });
 
-})(); // end engine v4
+})();
